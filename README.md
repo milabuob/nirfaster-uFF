@@ -23,6 +23,13 @@ The provided demo codes shows you all the functionalities the micro version. The
 
 The head model is adapted from the examples in the NeuroDOT toolbox: https://github.com/WUSTL-ORL/NeuroDOT
 
+## Available key functionalities
+
+- I/O of NIRFAST(er) meshes. This is directly compatible with the Matlab version
+- Mesh creation from segmented volumetric data
+- Conversion from solid mesh to NIRFASTer mesh
+- Fluence calculation (CW/FD)
+
 ## Some technical details
 
 Speed-critically functions are packed in precompiled libraries, nirfasteruff_cpu and nirfasteruff_cuda. The Linux and Mac versions are statically linked so there is only one file for each library, and no extra dependen is required (need testing). Only limited static linking could be used on Windows (e.g. the CUDA libraries), and consequently the necessary dlls are also included.
