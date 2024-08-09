@@ -1706,9 +1706,9 @@ class base:
             
             J Cao, MILAB@UoB, 2024, NIRFASTerFF
             '''
-            xgrid = np.array(xgrid).squeeze()
-            ygrid = np.array(ygrid).squeeze()
-            zgrid = np.array(zgrid).squeeze()
+            xgrid = np.float64(np.array(xgrid).squeeze())
+            ygrid = np.float64(np.array(ygrid).squeeze())
+            zgrid = np.float64(np.array(zgrid).squeeze())
             tmp = np.diff(xgrid)
             if np.any(tmp-tmp[0]):
                 print('Error: xgrid must be uniform')
