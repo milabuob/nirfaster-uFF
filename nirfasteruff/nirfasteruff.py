@@ -7,10 +7,10 @@ import copy
 from scipy import spatial
 import os
 
-import nirfasteruff_cpu
+from . import nirfasteruff_cpu
 
 if nirfasteruff_cpu.isCUDA():
-    import nirfasteruff_cuda
+    from . import nirfasteruff_cuda
 
 class utils:
     '''
@@ -1688,7 +1688,7 @@ class base:
                 return True
             else:
                 return False
-        
+            
         def gen_intmat(self, xgrid, ygrid, zgrid=[]):
             '''
             Calculate the information needed to convert data between mesh and volumetric space, specified by x, y, z (if 3D) grids.
@@ -1733,7 +1733,7 @@ class base:
                 coords = np.c_[X.flatten('F'), Y.flatten('F'), Z.flatten('F')]
             # DT = spatial.Delaunay(self.nodes)
             # ind, int_func = nirfasteruff_cpu.pointLocation(np.float64(DT.simplices+1), DT.points, np.atleast_2d(coords))
-            ind, int_func = nirfasteruff_cpu.pointLocation(self.elements, self.nodes, np.atleast_2d(coords))
+            ind, int_func = nirfasteruff_cpu.pointLocation(self.elements, self.nodes, np.atleast_2d(coords*1.0))
             inside = np.flatnonzero(ind>-1) # This is zero-based
             int_func_inside = int_func[inside, :]
             # nodes = np.int32(DT.simplices[ind[inside],:])
@@ -1750,22 +1750,74 @@ class base:
             self.vol.gridinmesh = inside + 1 # convert to one-based to be compatible with matlab
             
             # Now calculate the transformation from grid to mesh
-            DT = spatial.Delaunay(coords)
-            ind, int_func = nirfasteruff_cpu.pointLocation(np.float64(DT.simplices+1), DT.points, np.atleast_2d(self.nodes))
-            inside = np.flatnonzero(ind>-1) # This is zero-based
-            # if any of the queried nodes was not asigned a value in the previous step,
-            # treat it as an outside node and extrapolate. Otherwise the boundary elements will have smaller values than they should
-            tmp = np.int32(DT.simplices[ind[inside],:])
-            tmp2 = np.isin(tmp, self.vol.gridinmesh-1)
-            outside = np.r_[np.flatnonzero(ind<0), inside[tmp2.sum(axis=1)<tmp2.shape[1]]]
-            inside = np.array(list(set(inside) - set(outside)))
+            # We can cheat a little bit because of the regular grid: we can triangularize one voxel and replicate
+            if len(zgrid)>0:
+                start = np.array([xgrid[0], ygrid[0], zgrid[0]])
+                nodes0 = np.array([[0,0,0], [0, self.vol.res[1], 0], 
+                                   [self.vol.res[0], 0, 0], [self.vol.res[0],self.vol.res[1],0], 
+                                   [0,0,self.vol.res[2]], [0, self.vol.res[1], self.vol.res[2]], 
+                                   [self.vol.res[0], 0, self.vol.res[2]], [self.vol.res[0],self.vol.res[1],self.vol.res[2]]])
+                # hard-coded element list
+                ele0 = np.array([[2,5,6,3],
+                                 [5,7,6,3],
+                                 [3,2,5,1],
+                                 [1,2,5,4],
+                                 [0,2,1,4],
+                                 [5,2,6,4]], dtype=np.int32)
+                # Calculate integration function within the small cube
+                loweridx = np.floor((self.nodes - start) / self.vol.res)
+                pos_in_cube = self.nodes - (loweridx * self.vol.res + start)
+                ind0, int_func0 = nirfasteruff_cpu.pointLocation(np.float64(ele0+1), nodes0, pos_in_cube)
+                # Convert back to the node numbering of the full grid
+                raw_idx = np.zeros((self.nodes.shape[0], 4))
+                for i in range(self.nodes.shape[0]):
+                    cube_coord = nodes0 + (loweridx[i,:] * self.vol.res)
+                    tet_vtx = cube_coord[ele0[ind0[i], :], :]
+                    rel_idx = (tet_vtx - start) / self.vol.res
+                    raw_idx[i,:] = rel_idx[:,2]*len(xgrid)*len(ygrid) + rel_idx[:,0]*len(xgrid) + rel_idx[:,1] # zero-based
+                
+                outvec = (loweridx[:,0]<0) | (loweridx[:,1]<0) | (loweridx[:,2]<0)
+                inside = np.flatnonzero(~outvec)
+                # if any of the queried nodes was not asigned a value in the previous step,
+                # treat it as an outside node and extrapolate. Otherwise the boundary elements will have smaller values than they should
+                tmp = raw_idx[inside, :]
+                tmp2 = np.isin(tmp, self.vol.gridinmesh-1)
+                outside = np.r_[np.flatnonzero(outvec), inside[tmp2.sum(axis=1)<tmp2.shape[1]]]
+                inside = np.array(list(set(inside) - set(outside)))
+            else:
+                start = np.array([xgrid[0], ygrid[0]])
+                nodes0 = np.array([[0,0], [0, self.vol.res[1]], 
+                                   [self.vol.res[0], 0], [self.vol.res[0],self.vol.res[1]]])
+                # hard-coded element list
+                ele0 = np.array([[2,1,0],
+                                 [1,2,3]], dtype=np.int32)
+                # Calculate integration function within the small cube
+                loweridx = np.floor((self.nodes - start) / self.vol.res)
+                pos_in_cube = self.nodes - (loweridx * self.vol.res + start)
+                ind0, int_func0 = nirfasteruff_cpu.pointLocation(np.float64(ele0+1), nodes0, pos_in_cube)
+                # Convert back to the node numbering of the full grid
+                raw_idx = np.zeros((self.nodes.shape[0], 3))
+                for i in range(self.nodes.shape[0]):
+                    cube_coord = nodes0 + (loweridx[i,:] * self.vol.res)
+                    tet_vtx = cube_coord[ele0[ind0[i], :], :]
+                    rel_idx = (tet_vtx - start) / self.vol.res
+                    raw_idx[i,:] = rel_idx[:,0]*len(ygrid) + rel_idx[:,1] # zero-based
+                
+                outvec = (loweridx[:,0]<0) | (loweridx[:,1]<0)
+                inside = np.flatnonzero(~outvec)
+                # if any of the queried nodes was not asigned a value in the previous step,
+                # treat it as an outside node and extrapolate. Otherwise the boundary elements will have smaller values than they should
+                tmp = raw_idx[inside, :]
+                tmp2 = np.isin(tmp, self.vol.gridinmesh-1)
+                outside = np.r_[np.flatnonzero(outvec), inside[tmp2.sum(axis=1)<tmp2.shape[1]]]
+                inside = np.array(list(set(inside) - set(outside)))
             
             gridTree = spatial.KDTree(coords[self.vol.gridinmesh-1, :])
             _,nn = gridTree.query(self.nodes[outside,:])
-            int_func_inside = int_func[inside, :]
-            nodes = np.int64(DT.simplices[ind[inside],:])
+            int_func_inside = int_func0[inside, :]
+            nodes = np.int64(raw_idx[inside,:])
             int_mat = sparse.csc_matrix((np.r_[int_func_inside.flatten('F'), np.ones(nn.size)], 
-                                         (np.r_[np.tile(inside, int_func.shape[1]), outside], np.r_[nodes.flatten('F'), self.vol.gridinmesh[nn]-1])), shape=(ind.size, coords.shape[0]))
+                                         (np.r_[np.tile(inside, int_func.shape[1]), outside], np.r_[nodes.flatten('F'), self.vol.gridinmesh[nn]-1])), shape=(ind0.size, coords.shape[0]))
             self.vol.grid2mesh = int_mat
             self.vol.meshingrid = inside + 1 # convert to one-based
 

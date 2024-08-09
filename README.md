@@ -2,7 +2,7 @@
 
 Public repository containing the micro (fast and furious) version of NIRFASTer
 
-- Version: 0.9.5 (beta)
+- Version: 0.9.6 (beta)
 - Authors: Jiaming Cao, MILab@UoB
 - License: TBD
 
@@ -12,10 +12,19 @@ The toolbox can be run on Linux, Mac, and Windows. To use GPU acceleration, you 
 
 ## How to Install
 
-1. Clone the main repo, which contains THE python file and some demo codes
-2. Depending on your system and Python version, download the appropriate zip file(s) from the Release, and unzip the contents into the main nirfaster-uFF folder
+1. Clone the main repo, which contains two folders: nirfasteruff (THE source code) and demo (a few demo codes)
+2. Depending on your system and Python version, download the appropriate zip file(s) from the appropriate Release, and unzip the contents into the *nirfasteruff* folder
+3. You should be good to go
 
 Regardless of your setup, you will need to download the CPU library (cpu-*os*-python*). If your system is CUDA-enabled, you will *also* need to download the appropriate GPU library (gpu-*os*-python*), in addition.
+
+**Special notes to Mac users**
+
+Mac may throw a warning that the file is damaged and need to be moved to Trash. You can bypass this by using command
+
+```bash
+xattr -c <your_library>.so
+```
 
 ## The demos
 
@@ -32,11 +41,13 @@ The head model is adapted from the examples in the NeuroDOT toolbox: https://git
 
 ## Some technical details
 
+The reason for the Mac issue: Mac automatically attaches a quarantine attribute to downloaded files, and the marked files will be checked by the Gatekeeper. Somehow (file I/O, possibly), Apple's gatekeeper is not very happy about my code and refuses to run. This checking can be bypassed by manually removing the quarantine attribute. You can view this by `ls -l@`, and you should see the `com.apple.quarantine` thing.
+
 Speed-critically functions are packed in precompiled libraries, nirfasteruff_cpu and nirfasteruff_cuda. The Linux and Mac versions are statically linked so there is only one file for each library, and no extra dependen is required (need testing). Only limited static linking could be used on Windows (e.g. the CUDA libraries), and consequently the necessary dlls are also included.
 
 I'm compiling for both Python 3.11 (the default version shipped by Anaconda, as of July 2024) and 3.10 (the version cedalion uses). No extra python libraries needed, though of course you will need numpy, scipy, and matplotlib. They should already be available if you use Anaconda python. 
 
-CUDA toolkit used: ver. 12.4, supporting from sm_52 (GTX 9xx series) to sm_90a (next to be released)
+CUDA toolkit used: ver. 12.4, supporting from ```sm_52``` (GTX 9xx series) to ```sm_90a``` (next to be released)
 
 #### Currently tested working good on:
 
@@ -48,7 +59,7 @@ CUDA toolkit used: ver. 12.4, supporting from sm_52 (GTX 9xx series) to sm_90a (
 
 #### Further testing needed
 
-- Non-stock C++ libraries used on Mac. Statically linked, but may have overlooked some libs. Need to check if it runs on other devices. Cross-compiled for Intel Macs as well, but not tested
+- Cross-compiled for Intel Macs as well, but not tested
 - Should run OK on up-to-date Linux machines
 
 #### Potential pitfalls:
