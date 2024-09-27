@@ -1767,11 +1767,11 @@ class base:
                 # Calculate integration function within the small cube
                 loweridx = np.floor((self.nodes - start) / self.vol.res)
                 pos_in_cube = self.nodes - (loweridx * self.vol.res + start)
-                ind0, int_func0 = nirfasteruff_cpu.pointLocation(np.float64(ele0+1), nodes0, pos_in_cube)
+                ind0, int_func0 = nirfasteruff_cpu.pointLocation(np.float64(ele0+1), 1.0*nodes0, pos_in_cube)
                 # Convert back to the node numbering of the full grid
                 raw_idx = np.zeros((self.nodes.shape[0], 4))
                 for i in range(self.nodes.shape[0]):
-                    cube_coord = nodes0 + (loweridx[i,:] * self.vol.res)
+                    cube_coord = nodes0 + (loweridx[i,:] * self.vol.res + start)
                     tet_vtx = cube_coord[ele0[ind0[i], :], :]
                     rel_idx = (tet_vtx - start) / self.vol.res
                     raw_idx[i,:] = rel_idx[:,2]*len(xgrid)*len(ygrid) + rel_idx[:,0]*len(xgrid) + rel_idx[:,1] # zero-based
@@ -1794,11 +1794,11 @@ class base:
                 # Calculate integration function within the small cube
                 loweridx = np.floor((self.nodes - start) / self.vol.res)
                 pos_in_cube = self.nodes - (loweridx * self.vol.res + start)
-                ind0, int_func0 = nirfasteruff_cpu.pointLocation(np.float64(ele0+1), nodes0, pos_in_cube)
+                ind0, int_func0 = nirfasteruff_cpu.pointLocation(np.float64(ele0+1), 1.0*nodes0, pos_in_cube)
                 # Convert back to the node numbering of the full grid
                 raw_idx = np.zeros((self.nodes.shape[0], 3))
                 for i in range(self.nodes.shape[0]):
-                    cube_coord = nodes0 + (loweridx[i,:] * self.vol.res)
+                    cube_coord = nodes0 + (loweridx[i,:] * self.vol.res + start)
                     tet_vtx = cube_coord[ele0[ind0[i], :], :]
                     rel_idx = (tet_vtx - start) / self.vol.res
                     raw_idx[i,:] = rel_idx[:,0]*len(ygrid) + rel_idx[:,1] # zero-based

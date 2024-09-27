@@ -10,6 +10,7 @@ This is a compact (aka micro) version of the NIRFASTer with Python interface, pr
 
 The toolbox can be run on Linux, Mac, and Windows. To use GPU acceleration, you will need to have a Nvidia card with compute capability higer than `sm_52`, i.e. the GTX9xx series.
 
+
 ## How to Install
 
 1. Clone the main repo, which contains two folders: nirfasteruff (THE source code) and demo (a few demo codes)
@@ -25,6 +26,11 @@ Mac may throw a warning that the file is damaged and need to be moved to Trash. 
 ```bash
 xattr -c <your_library>.so
 ```
+
+## Citation
+If you are using our toolbox, please cite the following paper:
+
+Dehghani, Hamid, et al. "Near infrared optical tomography using NIRFAST: Algorithm for numerical model and image reconstruction." Communications in numerical methods in engineering 25.6 (2009): 711-732. doi:10.1002/cnm.1162
 
 ## The demos
 
@@ -56,11 +62,7 @@ CUDA toolkit used: ver. 12.4, supporting from ```sm_52``` (GTX 9xx series) to ``
 - A Intel-chip laptop, with CUDA (sm_75): Windows 10
 - A modern desktop (Intel-chip), with CUDA (sm_52): Windows 11 and Ubuntu 22.04
 - A private server in lab, with CUDA (sm_70): Ubuntu 22.04
-
-#### Further testing needed
-
-- Cross-compiled for Intel Macs as well, but not tested
-- Should run OK on up-to-date Linux machines
+- Special thanks to the developers of Cedalion at TU Berlin, for helping test the toolbox on multiple platforms
 
 #### Potential pitfalls:
 
