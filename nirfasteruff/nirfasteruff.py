@@ -144,7 +144,7 @@ class utils:
             t = 1
         
         point = A + (B-A)*t
-        dist = np.norm(p - point)     
+        dist = np.linalg.norm(p - point)     
         return dist, point
     
     def pointTriangleDistance(TRI, P):
