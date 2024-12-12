@@ -1,0 +1,6 @@
+nirfasteruff.nirfasteruff\_cpu.ele\_area
+========================================
+
+.. currentmodule:: nirfasteruff.nirfasteruff_cpu
+
+.. autofunction:: ele_area

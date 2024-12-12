@@ -1,0 +1,6 @@
+nirfasteruff.nirfasteruff\_cpu.isCUDA
+=====================================
+
+.. currentmodule:: nirfasteruff.nirfasteruff_cpu
+
+.. autofunction:: isCUDA

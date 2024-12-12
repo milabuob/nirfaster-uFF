@@ -1,0 +1,36 @@
+nirfasteruff.nirfasteruff
+=========================
+
+.. automodule:: nirfasteruff.nirfasteruff
+  
+   
+   
+   
+
+   
+   
+   
+
+   
+   
+   .. rubric:: Classes
+
+   .. autosummary::
+      :toctree:                                          
+      :template: custom-class-template.rst               
+   
+      base
+      forward
+      io
+      math
+      meshing
+      utils
+   
+   
+
+   
+   
+   
+
+
+

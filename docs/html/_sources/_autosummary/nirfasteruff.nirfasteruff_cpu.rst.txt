@@ -1,0 +1,44 @@
+nirfasteruff.nirfasteruff\_cpu
+==============================
+
+.. automodule:: nirfasteruff.nirfasteruff_cpu
+  
+   
+   
+   
+
+   
+   
+   .. rubric:: Functions
+
+   .. autosummary::
+      :toctree:                                          
+   
+      ele_area
+      gen_mass_matrix
+      get_field_CW
+      get_field_FD
+      isCUDA
+      mesh_support
+      pointLocation
+   
+   
+
+   
+   
+   .. rubric:: Classes
+
+   .. autosummary::
+      :toctree:                                          
+      :template: custom-class-template.rst               
+   
+      ConvergenceInfoCPU
+   
+   
+
+   
+   
+   
+
+
+

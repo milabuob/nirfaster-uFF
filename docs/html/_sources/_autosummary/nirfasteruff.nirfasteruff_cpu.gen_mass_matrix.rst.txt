@@ -1,0 +1,6 @@
+nirfasteruff.nirfasteruff\_cpu.gen\_mass\_matrix
+================================================
+
+.. currentmodule:: nirfasteruff.nirfasteruff_cpu
+
+.. autofunction:: gen_mass_matrix

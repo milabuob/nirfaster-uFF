@@ -1,0 +1,6 @@
+nirfasteruff.nirfasteruff\_cpu.pointLocation
+============================================
+
+.. currentmodule:: nirfasteruff.nirfasteruff_cpu
+
+.. autofunction:: pointLocation

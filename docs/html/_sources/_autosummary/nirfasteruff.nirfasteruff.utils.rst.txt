@@ -1,0 +1,32 @@
+nirfasteruff.nirfasteruff.utils
+===============================
+
+.. currentmodule:: nirfasteruff.nirfasteruff
+
+.. autoclass:: utils
+   :members:                                    
+   :show-inheritance:                           
+   :inherited-members:                          
+
+   
+   .. automethod:: __init__
+
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~utils.__init__
+      ~utils.check_element_orientation_2d
+      ~utils.get_nthread
+      ~utils.get_solver
+      ~utils.isCUDA
+      ~utils.pointLineDistance
+      ~utils.pointLocation
+      ~utils.pointTriangleDistance
+   
+   
+
+   
+   
+   

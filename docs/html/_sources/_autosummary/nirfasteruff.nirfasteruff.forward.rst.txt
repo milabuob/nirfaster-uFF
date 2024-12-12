@@ -1,0 +1,27 @@
+nirfasteruff.nirfasteruff.forward
+=================================
+
+.. currentmodule:: nirfasteruff.nirfasteruff
+
+.. autoclass:: forward
+   :members:                                    
+   :show-inheritance:                           
+   :inherited-members:                          
+
+   
+   .. automethod:: __init__
+
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~forward.__init__
+      ~forward.femdata_stnd_CW
+      ~forward.femdata_stnd_FD
+   
+   
+
+   
+   
+   

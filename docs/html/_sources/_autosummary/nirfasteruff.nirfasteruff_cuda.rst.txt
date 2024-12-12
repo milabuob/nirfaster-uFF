@@ -1,0 +1,40 @@
+nirfasteruff.nirfasteruff\_cuda
+===============================
+
+.. automodule:: nirfasteruff.nirfasteruff_cuda
+  
+   
+   
+   
+
+   
+   
+   .. rubric:: Functions
+
+   .. autosummary::
+      :toctree:                                          
+   
+      gen_mass_matrix
+      get_field_CW
+      get_field_FD
+   
+   
+
+   
+   
+   .. rubric:: Classes
+
+   .. autosummary::
+      :toctree:                                          
+      :template: custom-class-template.rst               
+   
+      ConvergenceInfoGPU
+   
+   
+
+   
+   
+   
+
+
+

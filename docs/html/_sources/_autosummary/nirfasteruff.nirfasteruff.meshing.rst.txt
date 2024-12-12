@@ -1,0 +1,26 @@
+nirfasteruff.nirfasteruff.meshing
+=================================
+
+.. currentmodule:: nirfasteruff.nirfasteruff
+
+.. autoclass:: meshing
+   :members:                                    
+   :show-inheritance:                           
+   :inherited-members:                          
+
+   
+   .. automethod:: __init__
+
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~meshing.RunCGALMeshGenerator
+      ~meshing.__init__
+   
+   
+
+   
+   
+   

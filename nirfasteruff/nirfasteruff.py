@@ -6,6 +6,8 @@ import platform
 import copy
 from scipy import spatial
 import os
+import psutil
+import subprocess
 
 from . import nirfasteruff_cpu
 
@@ -18,28 +20,29 @@ class utils:
     Dummy class used so the function hierarchy can be compatible with the full version
     '''
     def isCUDA():
-        '''
-        Checks if system has a CUDA device with compute capability >=5.2  
-        On a Mac machine, it automatically returns False without checking  
-                
-        Input: None  
-        Output: bool value of whether compatible CUDA device exists  
+        """
+        Checks if system has a CUDA device with compute capability >=5.2
         
-        J Cao, MILAB@UoB, 2024, NIRFASTerFF
-        '''
+        On a Mac machine, it automatically returns False without checking
+
+        Returns
+        -------
+        bool
+            True if a CUDA device with compute capability >=5.2 exists, False if not.
+
+        """
         return nirfasteruff_cpu.isCUDA()
     
     def get_solver():
-        '''
-        Get the default solver. If isCUDA is true, returns GPU, otherwise CPU
-        
-        solver = get_solver()
-        
-        Input: None
-        Output: (string) 'CPU' or 'GPU'
-        
-        J Cao, MILAB@UoB, 2024, NIRFASTerFF
-        '''
+        """
+        Get the default solver.
+
+        Returns
+        -------
+        str
+            If isCUDA is true, returns 'GPU', otherwise 'CPU'.
+
+        """
         if utils.isCUDA():
             solver = 'GPU'
         else:
@@ -47,42 +50,57 @@ class utils:
         return solver            
     
     def pointLocation(mesh, pointlist):
-        '''
-        Similar to Matlab's pointLocation function, queries which elements in mesh the points belong to.  
-        Also calculate the barycentric coordinates.  
+        """
+        Similar to Matlab's pointLocation function, queries which elements in mesh the points belong to, and also calculate the barycentric coordinates.
         
-        ind, int_func = pointLocation(mesh, pointlist)  
-        
-        Input:  
-            - mesh: A nirfasteruff.base.stnd_mesh object. Can be 2D or 3D  
-            - pointlist: A list of points to query. Should be a double NumPy array of shape (N, dim),
-                        where N is number of points
-        Output:  
-            - ind: (double NumPy array) i-th queried point is in element ind[i] of mesh (zero-based).  
-                    If not in mesh, ind[i]=-1. Size: (N,)  
-            - int_func: (double NumPy array) i-th row is the barycentric coordinates of i-th queried point  
-                    If not in mesh, corresponding row is all zero. Size: (N, dim+1)  
-                    
-        J Cao, MILAB@UoB, 2024, NIRFASTerFF
-        '''
+        This is a wrapper of the C++ function pointLocation, which implememnts an AABB tree based on Darren Engwirda's findtria package
+
+        Parameters
+        ----------
+        mesh : NIRFASTer mesh
+            Can be 2D or 3D.
+        pointlist : NumPy array
+            A list of points to query. Shape (N, dim), where N is number of points.
+
+        Returns
+        -------
+        ind : double NumPy array
+            i-th queried point is in element `ind[i`] of mesh (zero-based). If not in mesh, `ind[i]=-1`. Size: (N,).
+        int_func : double NumPy array
+            i-th row is the barycentric coordinates of i-th queried point. If not in mesh, corresponding row is all zero. Size: (N, dim+1).
+            
+        References
+        -------
+        https://github.com/dengwirda/find-tria
+
+        """
         ind, int_func = nirfasteruff_cpu.pointLocation(mesh.elements, mesh.nodes, np.atleast_2d(pointlist))
         return ind, int_func
     
     def check_element_orientation_2d(ele, nodes):
-        '''
-        Make sure the 2D triangular elements are oriented in CCW.
+        """
+        Make sure the 2D triangular elements are oriented counter clock wise.
+        
         This is a direct translation from the Matlab version.
-        
-        ele2 = check_element_orientation_2d(ele, nodes)
-        
-        Input:
-            ele: (NumPy array) Elements in a 2D mesh. Size: (N, 3)
-            nodes: (NumPy array) Node locations in a 2D mesh. Size: (N, 2)
-        Output:
-            ele2: (NumPy array) Re-oriented element list
-            
-        J Cao, MILAB@UoB, 2024, NIRFASTerFF
-        '''
+
+        Parameters
+        ----------
+        ele : NumPy array
+            Elements in a 2D mesh. One-based. Size: (NNodes, 3).
+        nodes : NumPy array
+            Node locations in a 2D mesh. Size: (NNodes, 2).
+
+        Raises
+        ------
+        TypeError
+            If ele does not have three rows, i.e. not a 2D triangular mesh.
+
+        Returns
+        -------
+        ele : NumPy array
+            Re-oriented element list.
+
+        """
         if ele.shape[1] != 3:
             raise TypeError('check_element_orientation_2d expects a 2D triangular mesh!')
         if nodes.shape[1] == 2:
@@ -97,22 +115,28 @@ class utils:
         return ele
     
     def pointLineDistance(A, B, p):
-        '''
-        Calculate the distance between a point and a line (defined by two point), and find the projection point
+        """
+        Calculate the distance between a point and a line (defined by two points), and find the projection point
+        
         This is a direct translation  from the Matlab version
-        
-        dist, point = pointLineDistance(A, B, p)
-        
-        Input:
-            A: first point on the line
-            B: second point on the line
-            p: point of query
-        Output:
-            dist: point-line distant
-            point: projection point
-        
-        J Cao, MILAB@UoB, 2024, NIRFASTerFF
-        '''
+
+        Parameters
+        ----------
+        A : NumPy array
+            first point on the line. Size (2,) or (3,)
+        B : NumPy array
+            second point on the line. Size (2,) or (3,)
+        p : NumPy array
+            point of query. Size (2,) or (3,)
+
+        Returns
+        -------
+        dist : double
+            point-line distance.
+        point : NumPy array
+            projection point on the line.
+
+        """
         t = np.dot(p-A, B-A) / np.dot(B-A, B-A)
         if t<0:
             t = 0
@@ -124,41 +148,30 @@ class utils:
         return dist, point
     
     def pointTriangleDistance(TRI, P):
-        '''
-        Joshua Shafer's translation: https://gist.github.com/joshuashaffer/99d58e4ccbd37ca5d96e
-        function [dist,PP0] = pointTriangleDistance(TRI,P)
-        calculate distance between a point and a triangle in 3D
-        SYNTAX
-          dist = pointTriangleDistance(TRI,P)
-          [dist,PP0] = pointTriangleDistance(TRI,P)
+        """
+        Calculate the distance between a point and a triangle (defined by three points), and find the projection point
+
+        Parameters
+        ----------
+        TRI : Numpy array
+            The three points (per row) defining the triangle. Size: (3,3)
+        P : Numpy array
+            point of query. Size (3,).
+
+        Returns
+        -------
+        dist : double
+            point-triangle distance.
+        PP0 : NumPy array
+            projection point on the triangular face.
+            
+        Notes
+        -----
+        This is modified from Joshua Shaffer's code, available at: https://gist.github.com/joshuashaffer/99d58e4ccbd37ca5d96e
         
-        DESCRIPTION
-          Calculate the distance of a given point P from a triangle TRI.
-          Point P is a row vector of the form 1x3. The triangle is a matrix
-          formed by three rows of points TRI = [P1;P2;P3] each of size 1x3.
-          dist = pointTriangleDistance(TRI,P) returns the distance of the point P
-          to the triangle TRI.
-          [dist,PP0] = pointTriangleDistance(TRI,P) additionally returns the
-          closest point PP0 to P on the triangle TRI.
-        
-        Author: Gwendolyn Fischer
-        Release: 1.0
-        Release date: 09/02/02
-        Release: 1.1 Fixed Bug because of normalization
-        Release: 1.2 Fixed Bug because of typo in region 5 20101013
-        Release: 1.3 Fixed Bug because of typo in region 2 20101014
-    
-        Possible extention could be a version tailored not to return the distance
-        and additionally the closest point, but instead return only the closest
-        point. Could lead to a small speed gain.
-    
-       
-        The algorithm is based on
-        "David Eberly, 'Distance Between Point and Triangle in 3D',
-        Geometric Tools, LLC, (1999)"
-        http://www.geometrictools.com/Documentation/DistancePoint3Triangle3.pdf
-        s
-        '''
+        which is based on Gwendolyn Fischer's Matlab code: https://uk.mathworks.com/matlabcentral/fileexchange/22857-distance-between-a-point-and-a-triangle-in-3d
+
+        """
         
         B = TRI[0, :]
         E0 = TRI[1, :] - B
@@ -325,19 +338,52 @@ class utils:
     
         PP0 = B + s * E0 + t * E1
         return dist, PP0
+
+    def get_nthread():
+        '''
+        Choose the number of OpenMP threads in CPU solvers
+        
+        On CPUs with no hyperthreading, all physical cores are used
+        Otherwise use min(physical_core, 8), i.e. no more than 8
+        
+        This is heuristically determined to avoid performance loss due to memory bottlenecking
+        
+        Advanced user can directly modify this function to choose the appropriate number of threads
+
+        Returns
+        -------
+        nthread : int
+            number of OpenMP threads to use in CPU solvers.
+
+        '''
+        logic_core = os.cpu_count()
+        physical_core = psutil.cpu_count(0)
+        if logic_core==physical_core:
+            # no hyperthreading, use all physical cores
+            nthread = physical_core
+        else:
+            # Use up to 8 threads to avoid memory bottleneck
+            nthread = np.min((physical_core, 8))
+        return nthread
     
     class SolverOptions:
-        '''
-        Contains the parameters used by the FEM solvers, Equivalent to 'solver_options' in the Matlab version
+        """
+        Parameters used by the FEM solvers, Equivalent to 'solver_options' in the Matlab version
         
-        max_iter (default=1000): maximum number of iterations allowed
-        AbsoluteTolerance (default=1e-12): Absolute tolerance for convergence
-        RelativeTolerance (default=1e-12): Relative (to the initial residual norm) tolerance for convergence
-        divergence (default=1e8): Stop the solver when residual norm greater than this value
-        GPU (default=-1): GPU selection. -1 for automatic, 0, 1, ... for manual selection on multi-GPU systems
-        
-        J Cao, MILAB@UoB, 2024, NIRFASTerFF
-        '''
+        Attributes
+        ----------
+        max_iter: int
+            maximum number of iterations allowed. Default: 1000
+        AbsoluteTolerance: double
+            Absolute tolerance for convergence. Default: 1e-12
+        RelativeTolerance: double
+            Relative (to the initial residual norm) tolerance for convergence. Default: 1e-12
+        divergence: double
+            Stop the solver when residual norm greater than this value. Default: 1e8
+        GPU: int
+            GPU selection. -1 for automatic, 0, 1, ... for manual selection on multi-GPU systems. Default: -1
+
+        """
         def __init__(self, max_iter = 1000, AbsoluteTolerance = 1e-12, RelativeTolerance = 1e-12, divergence = 1e8, GPU = -1):
             self.max_iter = max_iter
             self.AbsoluteTolerance = AbsoluteTolerance
@@ -346,18 +392,23 @@ class utils:
             self.GPU = GPU
             
     class ConvergenceInfo:
-        '''
-        Convergence information of the FEM solvers. Only used as a return type of functions nirfasteruff.math.get_field_*
+        """
+        Convergence information of the FEM solvers. Only used internally as a return type of functions nirfasteruff.math.get_field_*
+        
         Constructed using the output of the internal C++ functions
-        
-        Fields:
-            isConverged: if solver converged to relative tolerance, for each rhs
-            isConvergedToAbsoluteTolerance: if solver converged to absolute tolerance, for each rhs
-            iteration: iterations taken to converge, for each rhs
-            residual: final residual, for each rhs
-        
-        J Cao, MILAB@UoB, 2024, NIRFASTerFF
-        '''
+
+        Attributes
+        ----------
+            isConverged: bool array
+                if solver converged to relative tolerance, for each rhs
+            isConvergedToAbsoluteTolerance: bool array
+                if solver converged to absolute tolerance, for each rhs
+            iteration: int array
+                iterations taken to converge, for each rhs
+            residual: double array
+                final residual, for each rhs
+
+        """
         def __init__(self, info = None):
             self.isConverged = []
             self.isConvergedToAbsoluteTolerance = []
@@ -371,31 +422,47 @@ class utils:
                     self.residual.append(item.residual)
     
     class MeshingParams:
-        '''
+        """
         Parameters to be used by the CGAL mesher. Note: they should all be double
+
+        Attributes
+        ----------
+            xPixelSpacing: double
+                voxel distance in x direction. Default: 1.0
+            yPixelSpacing: double
+                voxel distance in y direction. Default: 1.0
+            SliceThickness: double
+                voxel distance in z direction. Default: 1.0
+            facet_angle:double
+                lower bound for the angle (in degrees) of surface facets. Default: 25.0
+            facet_size:double
+                upper bound for the radii of surface Delaunay balls circumscribing the facets. Default: 3.0
+            facet_distance:double
+                upper bound for the distance between the circumcenter of a surface facet and the center of its surface Delaunay ball. Default: 2.0
+            cell_radius_edge:double
+                upper bound for the ratio between the circumradius of a mesh tetrahedron and its shortest edge. Default: 3.0
+            general_cell_size:double
+                upper bound on the circumradii of the mesh tetrahedra, when no region-specific parameters (see below) are provided. Default: 3.0
+            subdomain: double Numpy array
+                Specify cell size for each region, in format::
+                    
+                    [region_label1, cell_size1]
+                    [region_label2, cell_size2]
+                        ...
+                                                    
+                If a region is not specified, value in "general_cell_size" will be used.  Default: np.array([0., 0.])
+            lloyd_smooth: bool
+                Switch for Lloyd smoother before local optimization. This can take up to 120s (hard limit set) but improves mesh quality. Default: True
+            offset: double Numpy array
+                offset value to be added to the nodes after meshing. Size (3,). Defualt: None
         
-        Fields:
-            xPixelSpacing (default=1): voxel distance in x direction
-            yPixelSpacing (default=1): voxel distance in y direction
-            SliceThickness (default=1): voxel distance in z direction
-                            
-            The following parameters are explained in detail in CGAL documentation:
-                https://doc.cgal.org/latest/Mesh_3/index.html#Chapter_3D_Mesh_Generation, Section 2.4
-            facet_angle (default= 25) 
-            facet_size (default= 3)
-            facet_distance (default= 2)
-            cell_radius_edge (default= 3) 
-            general_cell_size (default= 3)
-            subdomain (default= np.array([0., 0.])): Specify cell size for each region, in format:
-                                                    [region_label1, cell_size1]
-                                                    [region_label2, cell_size2]
-                                                        ...
-                                                    If a region is not specified, value in general_cell_size will be used
-            lloyd_smooth (default= True): Switch for Lloyd smoother before local optimization. This can take up to 120s but improves mesh quality
-            offset (default= None): offset value to be added to the nodes after meshing. NumPy array of size (3,)
-            
-        J Cao, MILAB@UoB, 2024, NIRFASTerFF
-        '''
+        Notes
+        ----------
+        Refer to CGAL documentation for details of the meshing algorithm as well as its parameters
+        
+        https://doc.cgal.org/latest/Mesh_3/index.html#Chapter_3D_Mesh_Generation
+
+        """
         def __init__(self, xPixelSpacing=1., yPixelSpacing=1., SliceThickness=1.,
                                  facet_angle = 25., facet_size = 3., facet_distance = 2.,
                                  cell_radius_edge = 3., general_cell_size = 3., subdomain = np.array([0., 0.]),
@@ -418,14 +485,29 @@ class io:
     Dummy class used so the function hierarchy can be compatible with the full version
     '''
     def saveinr(vol, fname, xPixelSpacing=1., yPixelSpacing=1., SliceThickness=1.):
-        '''
+        """
         Save a volume in the INRIA format. This is for the CGAL mesher.
+        
         Directly translated from the Matlab version
-        
-        saveinr(vol, fname, xPixelSpacing=1., yPixelSpacing=1., SliceThickness=1.)
-        
-        J Cao, MILAB@UoB, 2024, NIRFASTerFF
-        '''
+
+        Parameters
+        ----------
+        vol : NumPy array
+            the volume to be saved.
+        fname : str
+            file name to be saved as.
+        xPixelSpacing : double, optional
+            volume resolution in x direction. The default is 1..
+        yPixelSpacing : double, optional
+            volume resolution in y direction. The default is 1..
+        SliceThickness : double, optional
+            volume resolution in z direction. The default is 1..
+
+        Returns
+        -------
+        None.
+
+        """
         if not '.inr' in fname:
             fname = fname + '.inr'
         if vol.dtype == 'bool' or vol.dtype == 'uint8':
@@ -459,20 +541,28 @@ class io:
         return
         
     def readMEDIT(fname):
-        '''
+        """
         Read a mesh generated by the CGAL mesher, which is saved in MEDIT format
+        
         Directly translated from the Matlab version
-        
-        elements, nodes, faces, nnpe = readMEDIT(fname)
-        
-        Outputs:
-            elements: list of elements in the mesh
-            nodes: node locations of the mesh
-            faces: list of faces in the mesh. In case of 2D, it's the same as elements
-            nnpe: size of dimension 1 of elements, i.e. 4 for 3D mesh and 3 for 2D mesh
-        
-        J Cao, MILAB@UoB, 2024, NIRFASTerFF
-        '''
+
+        Parameters
+        ----------
+        fname : str
+            name of the file to be loaded.
+
+        Returns
+        -------
+        elements : NumPy array
+            list of elements in the mesh. Zero-based
+        nodes : NumPy array
+            node locations of the mesh, in mm.
+        faces : NumPy array
+            list of faces in the mesh. In case of 2D, it's the same as elements. Zero-based
+        nnpe : int
+            size of dimension 1 of elements, i.e. 4 for 3D mesh and 3 for 2D mesh.
+
+        """
         if not '.mesh' in fname:
             fname = fname + '.mesh'
         file = open(fname)
@@ -539,35 +629,77 @@ class io:
         
 class meshing:
     def RunCGALMeshGenerator(mask, opt = utils.MeshingParams()):
-        '''
-        Generate a tetrahedral mesh from a volume using CGAL mesher, where different regions are labeled used a distinct integer.
+        """
+        Generate a tetrahedral mesh from a volume using CGAL 6.0.1 mesher, where different regions are labeled used a distinct integer.
         
-        ele, nodes = RunCGALMeshGenerator(mask, opt = utils.MeshingParams())
+        Internallly, the function makes a system call to the mesher binary, which can also be used standalone through the command line.
         
-        Input:
-            mask: (uint8 Numpy array) 3D volumetric data defining the space to mesh. Regions defined by different integers. 0 is background.
-            opt (optional): parameters used. See nirfasteruff.utils.MeshingParams for detailed definition and default values
+        Also runs a pruning steps after the mesh generation, where nodes not referred to in the element list are removed.
+
+        Parameters
+        ----------
+        mask : uint8 NumPy array
+            3D volumetric data defining the space to mesh. Regions defined by different integers. 0 is background.
+        opt : nirfasteruff.utils.MeshingParams, optional
+            meshing parameters used. Default values will be used if not specified.
             
-        Output:
-            ele: element list, one-based
-            nodes: node locations of the generated mesh
-            
-        J Cao, MILAB@UoB, 2024, NIRFASTerFF
-        '''
+            See :func:`nirfasteruff.utils.MeshingParams` for details
+
+        Returns
+        -------
+        ele : int NumPy array
+            element list calculated by the mesher, one-based. Last column indicates the region each element belongs to
+        nodes : double NumPy array
+            element list calculated by the mesher, in mm.
+        
+        References
+        -------
+        https://doc.cgal.org/latest/Mesh_3/index.html#Chapter_3D_Mesh_Generation
+
+        """
+       
         if mask.dtype != 'uint8':
             print('Warning: CGAL only supports uint8. I am doing the conversion now, but this can lead to unexpected errors!', flush=1)
             mask = np.uint8(mask)
         
         tmpmeshfn = '._out.mesh'
         tmpinrfn = '._cgal_mesh.inr'
+        tmpcritfn = '._criteria.txt'
 
         # Save the tmp INRIA file
         io.saveinr(mask, tmpinrfn)
         
+        # save the tmp criteria file
+        fp = open(tmpcritfn, 'w')
+        fp.write(str(opt.facet_angle) + '\n')
+        fp.write(str(opt.facet_size) + '\n')
+        fp.write(str(opt.facet_distance) + '\n')
+        fp.write(str(opt.cell_radius_edge) + '\n')
+        fp.write(str(opt.general_cell_size) + '\n')
+        fp.write(str(int(opt.smooth)) + '\n')
+        if opt.subdomain.flatten()[0]==0:
+            fp.write('0\n')
+            fp.close()
+        else:
+            fp.write(str(opt.subdomain.shape[0]) + '\n')
+            for i in range(opt.subdomain.shape[0]):
+                fp.write(str(int(opt.subdomain[i,0])) + ' ' + str(opt.subdomain[i,1]) + '\n')
+            fp.close()
+        
         # call the mesher
-        nirfasteruff_cpu.cgal_mesher(tmpinrfn, tmpmeshfn, facet_angle=opt.facet_angle, facet_size=opt.facet_size,
-                                     facet_distance=opt.facet_distance, cell_radius_edge_ratio=opt.cell_radius_edge,
-                                     general_cell_size=opt.general_cell_size,subdomain=opt.subdomain, smooth=opt.smooth)
+        binpath = os.path.dirname(os.path.abspath(nirfasteruff_cpu.__file__))
+        if platform.system() == 'Darwin':
+            mesherbin = binpath + '/cgalmesherMAC'
+            status = subprocess.run([mesherbin, tmpinrfn, tmpmeshfn, tmpcritfn])
+        elif platform.system() == 'Linux':
+            mesherbin = binpath + '/cgalmesherLINUX'
+            status = subprocess.run([mesherbin, tmpinrfn, tmpmeshfn, tmpcritfn])
+        elif platform.system() == 'Windows':
+            mesherbin = binpath + '\\cgalmesher.exe'
+            status = subprocess.run([mesherbin, tmpinrfn, tmpmeshfn, tmpcritfn])
+        else:
+            raise TypeError('Unsupported operating system: '+platform.system())
+        status.check_returncode()
         # read result and cleanup
         ele_raw, nodes_raw, _, _ = io.readMEDIT(tmpmeshfn)
         if np.all(opt.offset != None):
@@ -579,10 +711,11 @@ class meshing:
         nodes = nodes_raw[nids-1,:]
         ele = np.c_[ele.reshape((-1,4)), ele_raw[:,-1]]
         if nodes.shape[0] != nodes_raw.shape[0]:
-            print(' Removed %d unused nodes from mesh!\n' % (nodes_raw.shape[0]-nodes.shape[0]))
+            print(' Removed %d unused nodes from mesh!\n' % (nodes_raw.shape[0]-nodes.shape[0]), flush=1)
         # remove the tmpfiles
         os.remove(tmpmeshfn)
         os.remove(tmpinrfn)
+        os.remove(tmpcritfn)
         return ele, nodes
                 
 
@@ -592,44 +725,50 @@ class base:
     Dummy class used so the function hierarchy can be compatible with the full version
     '''    
     class FDdata:
-        '''
+        """
         Class holding FD/CW data.
         
-        Fields:
-            phi: fluence from each source. If mesh contains non-tempty field vol, this will be represented on the grid
-                last dimension has the size of the number of sources
-            complex: Complex amplitude of each channel. Same as amplitude in case of CW data
-            link: Defining all the channels (i.e. source-detector pairs). Copied from mesh.link
-            amplitude: Absolution amplitude of each channel. I.e. amplitude=abs(complex)
-            phase: phase data of each channel. All zero in case of CW data
-            vol: Information needed to convert between volumetric and mesh space. Copied from mesh.vol
-        
-        Methods:
-            togrid(mesh): convert data to volumetric space as is defined in mesh.vol. This OVERRIDES the field phi
-            isvol(): check if data is in volumetric space
-            
-        J Cao, MILAB@UoB, 2024, NIRFASTerFF
-        '''
+        Attributes
+        ----------
+        phi: double Numpy array
+            Fluence from each source. If mesh contains non-tempty field vol, this will be represented on the grid. Last dimension has the size of the number of sources
+        complex: double or complex double Numpy vector
+            Complex amplitude of each channel. Same as amplitude in case of CW data
+        link: int32 NumPy array
+            Defining all the channels (i.e. source-detector pairs). Copied from mesh.link
+        amplitude: double Numpy vector
+            Absolute amplitude of each channel. I.e. amplitude=abs(complex)
+        phase: double Numpy vector
+            phase data of each channel. All zero in case of CW data
+        vol: nirfaseterff.base.meshvol
+            Information needed to convert between volumetric and mesh space. Copied from mesh.vol
+        """
         def __init__(self):
             self.phi = []
             self.complex = []
             self.link = []
             self.amplitude = []
             self.phase = []
-            self.vol = []
+            self.vol = base.meshvol()
             
         def togrid(self, mesh):
-            '''
-            togrid(mesh): convert data to volumetric space as is defined in mesh.vol. If it is empty, the function does nothing.
+            """
+            Convert data to volumetric space as is defined in mesh.vol. If it is empty, the function does nothing.
+            
+            If data is already in volumetric space, function casts data to the new volumetric space
+            
             CAUTION: This OVERRIDES the field phi
-            
-            Input:
-                mesh: a nirfasteruff.base.stnd_mesh object. Only the vol field will be used. 
-            Output:
-                No output
-            
-            J Cao, MILAB@UoB, 2024, NIRFASTerFF
-            '''
+
+            Parameters
+            ----------
+            mesh : nirfasteruff.base.stndmesh
+                mesh whose .vol attribute is used to do the conversion.
+
+            Returns
+            -------
+            None.
+
+            """
             if len(mesh.vol.xgrid)>0:
                 if len(self.vol.xgrid)>0:
                     print('Warning: data already in volumetric space. Recasted to the new volume.')
@@ -649,35 +788,68 @@ class base:
             else:
                 print('Warning: no converting information found. Ignored. Please run mesh.gen_intmat() first.')
         
+        def tomesh(self, mesh):
+            """
+            Convert data back to mesh space using information defined in mesh.vol. If data.vol is empty, the function does nothing.
+            
+            CAUTION: This OVERRIDES the field phi
+
+            Parameters
+            ----------
+            mesh : nirfasteruff.base.stndmesh
+                mesh whose .vol attribute is used to do the conversion.
+
+            Returns
+            -------
+            None.
+
+            """
+            
+            if not self.isvol():
+                print('Warning: data already in mesh space. Ignored.')
+            else:
+                self.phi = self.vol.grid2mesh.dot(np.reshape(self.phi, (-1, self.phi.shape[-1]), order='F'))
+                self.vol = base.meshvol()
+        
         def isvol(self):
-            '''
+            """
             Checks if data is in volumetric space.
-            Function takes no input and outputs boolean
-            '''
+
+            Returns
+            -------
+            bool
+                True if data is in volumetric space, False if not.
+
+            """
             if len(self.vol.xgrid):
                 return True
             else:
                 return False
     
     class optode:
-        '''
-        Class for NIRFASTer optodes, which can be either a group of sources or a group of detectors. The field fwhm for sources in the Matlab version has been dropped.
+        """
+        Class for NIRFASTer optodes, which can be either a group of sources or a group of detectors. 
         
-        Fields:
-            fixed (default=0): whether an optode is fixed. 
-                                If not, it will be moved to one scattering length inside the surface (source) or on the surface (detector).
-                                The moving is done by calling optode.move_sources, optode.move_detectors, or mesh.touch_optodes
-            num: indexing of the optodes, starting from one (1,2,3,...)
-            coord: each row is the location of an optode
-            int_func: Size (N, dim+2). First column is the index (one-based) of the element each optode is in, the subsequent columns are the barycentric coordinates
-        Methods:
-            move_sources(mesh): move sources to one scattering length inside of the mesh
-            move_detectors(mesh): move detectors to the surface of the mesh
-            touch_sources(mesh): make proper adjustments and fill in the missing fields for manually added sources
-            touch_detectors(mesh): make proper adjustments and fill in the missing fields for manually added detectors
-            
-        J Cao, MILAB@UoB, 2024, NIRFASTerFF
-        '''
+        Note: The field fwhm for sources in the Matlab version has been dropped.
+        
+        Attributes
+        ----------
+            fixed: bool like
+                whether an optode is fixed. 
+                
+                If not, it will be moved to one scattering length inside the surface (source) or on the surface (detector).
+                
+                Default: 0
+            num: double NumPy vector
+                indexing of the optodes, starting from one (1,2,3,...)
+            coord: double NumPy array
+                each row is the location of an optode. Unit: mm
+            int_func: double NumPy array
+                First column is the index (one-based) of the element each optode is in. 
+                
+                The subsequent columns are the barycentric coordinates (i.e. integration function) in the correponding elements. Size (N, dim+2). 
+        
+        """
         def __init__(self, coord = []):
             self.fixed = 0
             self.num = []
@@ -685,17 +857,32 @@ class base:
             self.int_func = []
             
         def move_sources(self, mesh):
-            '''
-            For each source, first move it to the closest point on the surface of the mesh, and then move inside by one scattering length.
-            This is function is called when sources are not fixed. Integration functions are also calculated after moving.
+            """
+            Moves sources to the appropriate locations in the mesh.
             
-            Input:
-                mesh: a nirfasteruff.base.stnd_mesh object. Can be either 2D or 3D
-            Output:
-                None
-                
-            J Cao, MILAB@UoB, 2024, NIRFASTerFF
-            '''
+            For each source, first move it to the closest point on the surface of the mesh, and then move inside by one scattering length along surface normal.
+            
+            where scattering length is :math:`1/\mu_s'`
+            
+            Integration functions are also calculated after moving.
+
+            Parameters
+            ----------
+            mesh : NIRFASTer mesh type
+                The mesh on which the sources are installed. Should be a 'stndmesh', either 2D or 3D
+
+            Raises
+            ------
+            TypeError
+                If mesh type is not recognized.
+            ValueError
+                If mesh.elements does not have 3 or 4 columns, or mesh.dimension is not 2 or 3.
+
+            Returns
+            -------
+            None.
+
+            """
             if mesh.type == 'stnd':
                 mus_eff = mesh.mus
             else:
@@ -814,17 +1001,28 @@ class base:
             
         
         def move_detectors(self, mesh):
-            '''
-            For each detector, move it to the closest point on the surface of the mesh.
-            This is function is called when detectors are not fixed. Integration functions are NOT calculated after moving.
+            """
+            Moves detector to the appropriate locations in the mesh.
             
-            Input:
-                mesh: a nirfasteruff.base.stnd_mesh object. Can be either 2D or 3D
-            Output:
-                None
-                
-            J Cao, MILAB@UoB, 2024, NIRFASTerFF
-            '''
+            For each detector, first move it to the closest point on the surface of the mesh.
+            
+            Integration functions are NOT calculated after moving, to be consistent with the Matlab version.
+
+            Parameters
+            ----------
+            mesh : NIRFASTer mesh type
+                The mesh on which the detectors are installed. Should be a 'stndmesh', either 2D or 3D
+
+            Raises
+            ------
+            ValueError
+                If mesh.elements does not have 3 or 4 columns, or mesh.dimension is not 2 or 3.
+
+            Returns
+            -------
+            None.
+
+            """
             if len(self.coord)==0:
                 print('Warning: no optodes to move')
                 return
@@ -893,17 +1091,25 @@ class base:
             
         
         def touch_sources(self, mesh):
-            '''
-            Recalculate/fill in all other fields based on 'fixed' and 'coord'. This is useful when a set of sources are manually added and only the locations are specified.
+            """
+            Recalculate/fill in all other fields based on 'fixed' and 'coord'. 
+            
+            This is useful when a set of sources are manually added and only the locations are specified.
+            
             For non-fixed sources, function 'move_sources' is called, otherwise recalculates integration functions directly
+            
             If no source locations are specified, the function does nothing
-            
-            Input:
-                mesh: a nirfasteruff.base.stnd_mesh object. Can be either 2D or 3D
-            Output: None
-            
-            J Cao, MILAB@UoB, 2024, NIRFASTerFF
-            '''
+
+            Parameters
+            ----------
+            mesh : NIRFASTer mesh type
+                The mesh on which the sources are installed. Should be a 'stndmesh', either 2D or 3D
+
+            Returns
+            -------
+            None.
+
+            """
             if len(self.coord)==0:
                 return
             n_src = self.coord.shape[0]
@@ -915,18 +1121,27 @@ class base:
                 self.int_func = np.c_[ind+1, int_func]
         
         def touch_detectors(self, mesh):
-            '''
-            Recalculate/fill in all other fields based on 'fixed' and 'coord'. This is useful when a set of detectors are manually added and only the locations are specified.
+            """
+            Recalculate/fill in all other fields based on 'fixed' and 'coord'. 
+            
+            This is useful when a set of detectors are manually added and only the locations are specified.
+            
             For non-fixed detectors, function 'move_detectors' is first called, and integration functions are calculated subsequentely.
+            
             For fixed detectors, recalculates integration functions directly.
-            If no source locations are specified, the function does nothing
             
-            Input:
-                mesh: a nirfasteruff.base.stnd_mesh object. Can be either 2D or 3D
-            Output: None
-            
-            J Cao, MILAB@UoB, 2024, NIRFASTerFF
-            '''
+            If no detector locations are specified, the function does nothing
+
+            Parameters
+            ----------
+            mesh : NIRFASTer mesh type
+                The mesh on which the sources are installed. Should be a 'stndmesh', either 2D or 3D
+
+            Returns
+            -------
+            None.
+
+            """
             if len(self.coord)==0:
                 return
             n_det = self.coord.shape[0]
@@ -937,26 +1152,37 @@ class base:
             self.int_func = np.c_[ind+1, int_func]
     
     class meshvol:
-        '''
-        Small class holding the information needed for converting between mesh and volumetric space. Values calculated by nirfasteruff.base.stnd_mesh.gen_intmat
-        Note that the volumetric space, defined by xgrid, ygrid, and zgrid (empty for 2D mesh), must be uniform
-        All fields should be directly compatible with the Matlab version
+        """
+        Small class holding the information needed for converting between mesh and volumetric space. Values calculated by nirfasteruff.base.*mesh.gen_intmat
         
-        Fields:
-            xgrid: x grid of the volumetric space
-            ygrid: y grid of the volumetric space
-            zgrid: z grid of the volumetric space. Empty for 2D meshes
-            mesh2grid: sparse matrix of size (len(xgrid)*len(ygrid)*len(ygrid), Nnodes). 
-                        For mesh-space data with size (Nnodes,), convertion to volumetric space is done by mesh2grid.dot(data)
-                        The result is vectorized in 'F' (Matlab) order
-            gridinmesh: indices (one-based) of data points in the volumetric space that are within the mesh space, vectorized in 'F' order.
-            res: resolution in x, y, z (if 3D) direction
-            grid2mesh: sparse matrix of size (Nnodes, len(xgrid)*len(ygrid)*len(ygrid)). 
-                        For volumetric data vectorized in 'F' order, convertion to mesh space is done by grid2mesh.dot(data)
-            meshingrid: indices (one-based) of data points in the mesh space that are within the volumetric space
+        Note that the volumetric space, defined by xgrid, ygrid, and zgrid (empty for 2D mesh), must be uniform
+        
+        Attributes
+        ----------
+            xgrid: double Numpy array
+                x grid of the volumetric space. In mm
+            ygrid: double Numpy array
+                y grid of the volumetric space. In mm
+            zgrid: double Numpy array
+                z grid of the volumetric space. In mm. Empty for 2D meshes
+            mesh2grid: double CSR sparse matrix
+                matrix converting a vector in mesh space to volumetric space, done by mesh2grid.dot(data)
+                
+                The result is vectorized in 'F' (Matlab) order
+                
+                Size: (len(xgrid)*len(ygrid)*len(zgrid), NNodes)
+            gridinmesh: int32 NumPy array
+                indices (one-based) of data points in the volumetric space that are within the mesh space, vectorized in 'F' order.
+            res: double NumPy array
+                resolution in x, y, z (if 3D) direction, in mm. Size (2,) or (3,)
+            grid2mesh: double CSR sparse matrix
+                matrix converting volumetric data, vectorized in 'F' order, to mesh space. Done by grid2mesh.dot(data)
+                
+                Size (Nnodes, len(xgrid)*len(ygrid)*len(ygrid))
+            meshingrid: int32 NumPy array
+                indices (one-based) of data points in the mesh space that are within the volumetric space
             
-        J Cao, MILAB@UoB, 2024, NIRFASTerFF
-        '''
+        """
         def __init__(self):
             self.xgrid = []
             self.ygrid = []
@@ -968,46 +1194,55 @@ class base:
             self.meshingrid = []
     
     class stndmesh:
-        '''
-        Main class for standard mesh. The methods should cover most of the commonly-used functions
+        """
+        Main class for standard mesh. The methods should cover most of the commonly-used functionalities
         
-        Fields:
-            name (default='EmptyMesh'): string of mesh name
-            nodes: (double NumPy array) locations of nodes in the mesh. Size (NNodes, dim)
-            bndvtx: (double NumPy array) indicator of whether a node is at boundary (1) or internal (0). Size (NNodes,)
-            type (always='stnd'): type of the mesh
-            mua: (double NumPy array) absorption coefficient (mm^-1) at each node. Size (NNodes,)
-            kappa: (double NumPy array) diffusion coefficient (mm) at each node. Size (NNodes,). Defined as 1/(3*(mua + mus))
-            ri: (double NumPy array) refractive index at each node. Size (NNodes,)
-            mus: (double NumPy array) reduced scattering coefficient (mm^-1) at each node. Size (NNodes,)
-            elements: (double NumPy array) triangulation (tetrahedrons or triangles) of the mesh, Size (NElements, dim+1)
-                        Row i contains the indices (one-based) of the nodes that form tetrahedron/triangle i
-            region: (double NumPy array) region labeling of each node. Starting from 1. Size (NNodes,)
-            source: a nirfasteruff.base.optode object containing the sources
-            meas: a nirfasteruff.base.optode object containing the detectors
-            link: (int32 NumPy array) list of source-detector pairs, i.e. channels. Size (NChannels,3)
-                    First column: source; Second column: detector; Third column: active (1) or not (0)
-            c: (double NumPy array) light speed (mm/sec) at each node.  Size (NNodes,). Defined as 1/ri
-            ksi: (double NumPy array) photon fluence rate scale factor on the mesh-outside_mesh boundary as derived from Fresenel's law. Size (NNodes,)
-            element_area: (double NumPy array) volume/area (mm^3 or mm^2) of each element. Size (NElements,)
-            support: (double NumPy array) total volume/area of all the elements each node belongs to. Size (NNodes,)
-            vol: a nirfasteruff.base.meshvol object holding information for converting between mesh and volumetric space. Empty if not available
-        Methods:
-            from_copy(mesh): deep copy all fields from another mesh.
-            from_file(file): construct mesh by reading the classic NIRFASTer ASCII files
-            from_mat(matfile): construct mesh from a Matlab .mat file containing a NIRFASTer mesh struct
-            from_solid(ele, nodes, prop = None, src = None, det = None, link = None): construct mesh from a triangularization generated by an external mesher
-            from_volume(vol, param = utils.MeshingParams(), prop = None, src = None, det = None, link = None): construct mesh from a segmented 3D volume
-            from_cedalion(*PLACEHOLDER*): construct mesh from cedalion format
-            save_nirfast(filename): save mesh to the classic NIRFASTer ASCII files
-            set_prop(prop): set optical properties of the mesh using information in 'prop'
-            touch_optodes(): move (if not fixed) the optodes and (re)calculate the barycentric coordinates (i.e. integration functions)
-            isvol(): check if field 'vol' is already calculated
-            gen_intmat(xgrid,ygrid,zgrid=None): calculate the information needed for converting between mesh and volumetric space, defined by x,y,z grids
-            femdata(freq, solver=utils.get_solver(), opt=utils.SolverOptions()): calculate the fluence for each source
+        Attributes
+        ----------
+            name: str
+                name of the mesh. Default: 'EmptyMesh'
+            nodes: double NumPy array
+                locations of nodes in the mesh. Unit: mm. Size (NNodes, dim)
+            bndvtx: double NumPy array
+                indicator of whether a node is at boundary (1) or internal (0). Size (NNodes,)
+            type: str
+                type of the mesh. It is always 'stnd'.
+            mua: double NumPy array
+                absorption coefficient (mm^-1) at each node. Size (NNodes,)
+            kappa: double NumPy array 
+                diffusion coefficient (mm) at each node. Size (NNodes,). Defined as 1/(3*(mua + mus))
+            ri: double NumPy array 
+                refractive index at each node. Size (NNodes,)
+            mus:(double NumPy array 
+                reduced scattering coefficient (mm^-1) at each node. Size (NNodes,)
+            elements: double NumPy array 
+                triangulation (tetrahedrons or triangles) of the mesh, Size (NElements, dim+1)
+                
+                Row i contains the indices of the nodes that form tetrahedron/triangle i
+                
+                One-based indexing for direct interoperatability with the Matlab version
+            region: double NumPy array 
+                region labeling of each node. Starting from 1. Size (NNodes,)
+            source: nirfasteruff.base.optode 
+                information about the sources
+            meas: nirfasteruff.base.optode
+                information about the the detectors
+            link: int32 NumPy array 
+                list of source-detector pairs, i.e. channels. Size (NChannels,3)
+                
+                First column: source; Second column: detector; Third column: active (1) or not (0)
+            c: double NumPy array 
+                light speed (mm/sec) at each node.  Size (NNodes,). Defined as c0/ri, where c0 is the light speed in vacuum
+            ksi: double NumPy array 
+                photon fluence rate scale factor on the mesh-outside_mesh boundary as derived from Fresenel's law. Size (NNodes,)
+            element_area: double NumPy array 
+                volume/area (mm^3 or mm^2) of each element. Size (NElements,)
+            support: double NumPy array 
+                total volume/area of all the elements each node belongs to. Size (NNodes,)
+            vol: nirfasteruff.base.meshvol 
+                object holding information for converting between mesh and volumetric space.
             
-        J Cao, MILAB@UoB, 2024, NIRFASTerFF
-        '''
+        """
         def __init__(self):
             self.name = 'EmptyMesh'
             self.nodes = []
@@ -1030,14 +1265,19 @@ class base:
             self.vol = base.meshvol()
         
         def from_copy(self, mesh):
-            '''
+            """
             Deep copy all fields from another mesh.
-            
-            Input:
-                mesh: the mesh to copy from
-            
-            J Cao, MILAB@UoB, 2024, NIRFASTerFF
-            '''
+
+            Parameters
+            ----------
+            mesh : nirfasteruff.base.stndmesh
+                the mesh to copy from.
+
+            Returns
+            -------
+            None.
+            """
+
             self.name = copy.deepcopy(mesh.name)
             self.nodes = copy.deepcopy(mesh.nodes)
             self.bndvtx = copy.deepcopy(mesh.bndvtx)
@@ -1059,18 +1299,29 @@ class base:
             self.vol = copy.deepcopy(mesh.vol)
         
         def from_file(self, file):
-            '''
-            Read from classic NIRFAST mesh format, not checking the correctness of the loaded integration functions.
+            """
+            Read from classic NIRFAST mesh (ASCII) format, not checking the correctness of the loaded integration functions.
+            
             All fields after loading should be directly compatible with Matlab version.
+
+            Parameters
+            ----------
+            file : str
+                name of the mesh. Any extension will be ignored.
+
+            Returns
+            -------
+            None.
             
-            mesh = nirfasteruff.base.stdn_mesh()
-            mesh.from_file('meshname')
+            Examples
+            -------
+            >>> mesh = nirfasteruff.base.stndmesh()
+            >>> mesh.from_file('meshname')
+
+            """
             
-            J Cao, MILAB@UoB, 2024, NIRFASTerFF
-            '''
             if '.mat' in file:
-                print('Error: seemingly you are trying to load a mat file. Please use .from_mat method instead')
-                return
+                raise TypeError('Error: seemingly you are trying to load a mat file. Please use .from_mat method instead')
             # clear data
             self.__init__()
             file = os.path.splitext(file)[0] # in case an extension is accidentally included
@@ -1079,40 +1330,36 @@ class base:
             if os.path.isfile(file + '.node'):
                 fullname = file + '.node'
                 tmp = np.genfromtxt(fullname, delimiter='\t', dtype=np.float64)
+                tmp = np.atleast_2d(tmp)
                 self.bndvtx = np.ascontiguousarray(tmp[:,0])
                 self.nodes = np.ascontiguousarray(tmp[:,1:])
                 self.dimension = tmp.shape[1]-1
             else:
-                print('Error: ' + file + '.node file is not present')
-                self.__init__()
-                return
+                raise ValueError('Error: ' + file + '.node file is not present')
+
             # Read the parameters
             if os.path.isfile(file + '.param'):
                 fullname = file + '.param'
                 with open(fullname, 'r') as paramfile:
                     header = paramfile.readline()
                 if ord(header[0])>=48 and ord(header[0])<=57:
-                    print('Error: header missing in .param file. You are probably using the old format, which is no longer supported')
-                    self.__init__()
-                    return
+                    raise ValueError('Error: header missing in .param file. You are probably using the old format, which is no longer supported')
                 elif 'stnd' not in header:
-                    print('Error: only stnd mesh is supported in this version')
-                    self.__init__()
-                    return
+                    raise ValueError('Error: the mesh you are trying to load is not a standard mesh')
                 else:
                     tmp = np.genfromtxt(fullname, skip_header=1, dtype=np.float64)
+                    tmp = np.atleast_2d(tmp)
                     self.mua = np.ascontiguousarray(tmp[:,0])
                     self.kappa = np.ascontiguousarray(tmp[:,1])
                     self.ri = np.ascontiguousarray(tmp[:,2])
                     self.mus = (1./self.kappa)/3. - self.mua
             else:
-                print('Error: ' + file + '.param file is not present')
-                self.__init__()
-                return
+                raise ValueError('Error: ' + file + '.param file is not present')
             # Read the elements
             if os.path.isfile(file + '.elem'):
                 fullname = file + '.elem'
                 ele = np.genfromtxt(fullname, delimiter='\t', dtype=np.float64)
+                ele = np.atleast_2d(ele)
                 ele = np.sort(ele)
                 if self.dimension==2:
                     self.elements = np.ascontiguousarray(utils.check_element_orientation_2d(ele, self.nodes))
@@ -1121,17 +1368,13 @@ class base:
                 if ele.shape[1]-1 != self.dimension:
                     print('Warning: nodes and elements seem to have incompatable dimentions. Are you using an old 2D mesh?')
             else:
-                print('Error: ' + file + '.elem file is not present')
-                self.__init__()
-                return
+                raise ValueError('Error: ' + file + '.elem file is not present')
             # Read the region information
             if os.path.isfile(file + '.region'):
                 fullname = file + '.region'
                 self.region = np.ascontiguousarray(np.genfromtxt(fullname, dtype=np.float64))                    
             else:
-                print('Error: ' + file + '.region file is not present')
-                self.__init__()
-                return
+                raise ValueError('Error: ' + file + '.region file is not present')
             # Read the source file
             if not os.path.isfile(file + '.source'):
                 print('Warning: source file is not present')
@@ -1157,6 +1400,7 @@ class base:
                     hdr = hdr1.split()
                 if not errorflag:
                     tmp = np.genfromtxt(fullname, skip_header=N_hdr, dtype=np.float64)
+                    tmp = np.atleast_2d(tmp)
                     src = base.optode()
                     src.fixed = fixed
                     src.num = tmp[:, hdr.index('num')]
@@ -1182,7 +1426,7 @@ class base:
                                     print('Warning: Sources ''int_func'' are 2D, mesh is 3D. Will recalculate')
                                     src.int_func = []
                         else:
-                            print('Warning: source int_func stored in wrong format. Will recalculate')
+                            print('Warning: source int_func stored in wrong format or missing. Will recalculate')
                     
                     if src.fixed==1  or len(src.int_func)>0:
                         if src.fixed==1:
@@ -1226,6 +1470,7 @@ class base:
                     hdr = hdr1.split()
                 if not errorflag:
                     tmp = np.genfromtxt(fullname, skip_header=N_hdr, dtype=np.float64)
+                    tmp = np.atleast_2d(tmp)
                     det = base.optode()
                     det.fixed = fixed
                     det.num = tmp[:, hdr.index('num')]
@@ -1274,7 +1519,7 @@ class base:
                 if ord(header[0])>=48 and ord(header[0])<=57:
                     print('Warning: header missing in .link file. You are probably using the old format, which is no longer supported')
                 else:
-                    self.link = np.genfromtxt(fullname, skip_header=1, dtype=np.int32)
+                    self.link = np.atleast_2d(np.genfromtxt(fullname, skip_header=1, dtype=np.int32))
             else:
                 print('Warning: link file is not present')
             # Speed of light in medium
@@ -1292,49 +1537,50 @@ class base:
             self.support = nirfasteruff_cpu.mesh_support(self.nodes, self.elements, self.element_area)
         
         def from_mat(self, matfile, varname = None):
-            '''
+            """
             Read from Matlab .mat file that contains a NIRFASTer mesh struct. All fields copied as is without error checking.
+
+            Parameters
+            ----------
+            matfile : str
+                name of the .mat file to load. Use of extension is optional.
+            varname : str, optional
+                if your .mat file contains multiple variables, use this argument to specify which one to load. The default is None.
+                
+                When `varname==None`, `matfile` should contain exatly one structure, which is a NIRFASTer mesh, or the function will do nothing
+
+            Returns
+            -------
+            None.
+
+            """
             
-            Input:
-                matfile: (string) name of the .mat file to load. Use of extension is optional
-                varname (optional): (string) if your .mat file contains multiple variables, use this argument to specify which one to load
-            
-            mesh = nirfasteruff.base.stdn_mesh()
-            mesh.from_mat('meshname.mat', 'mymesh')
-            
-            J Cao, MILAB@UoB, 2024, NIRFASTerFF
-            '''
             if type(matfile) != str:
-                print('argument 1 must be a string!')
-                return
+                raise TypeError('argument 1 must be a string!')
             if varname != None and type(varname) != str:
-                print('argument 2 must be a string!')
-                return
+                raise TypeError('argument 2 must be a string!')
             
             try:
                 tmp = sio.loadmat(matfile, struct_as_record=False, squeeze_me=True)
             except:
-                print('Failed to load Matlab file ' + matfile + '!')
-                return
+                raise TypeError('Failed to load Matlab file ' + matfile + '!')
             
             if varname != None:
                 try:
                     mesh = tmp[varname]
                 except:
-                    print('Cannot load mesh ' + varname + ' from mat file ' + matfile)
+                    raise TypeError('Cannot load mesh ' + varname + ' from mat file ' + matfile)
             else:
                 allkeys = list(tmp.keys())
                 is_struct = [type(tmp[key])==sio.matlab._mio5_params.mat_struct for key in allkeys]
                 if sum(is_struct) != 1:
-                    print('There must be precisely one struct in the mat file, if "varname" is not provided')
-                    return
+                    raise TypeError('There must be precisely one struct in the mat file, if "varname" is not provided')
                 else:
                     varname = allkeys[is_struct.index(True)]
                     mesh = tmp[varname]
                     
             if mesh.type != 'stnd':
-                print('mesh type must be standard')
-                return
+                raise TypeError('mesh type must be standard')
             # Now let's copy the data
             self.__init__()
             self.name = mesh.name
@@ -1381,24 +1627,44 @@ class base:
                 self.vol.meshingrid = mesh.vol.meshingrid
                 
         def from_solid(self, ele, nodes, prop = None, src = None, det = None, link = None):
-            '''
-            Construct mesh from a solid mesh generated by a mesher. Similar to the solidmesh2nirfast function in Matlab version.
+            """
+            Construct a NIRFASTer mesh from a 3D solid mesh generated by a mesher. Similar to the solidmesh2nirfast function in Matlab version.
+            
             Can also set the optical properties and optodes if supplied
-            
-            Input:
-                ele: (int/double NumPy array) element list in one-based indexing. If four columns, all nodes will be labeled as region 1
-                    If five columns, the last column will be used for region labeling
-                nodes: (double NumPy array) node locations in the mesh. Size (NNodes,3)
-                prop (optional): (double NumPy array) optical property information. See stnd_mesh.set_prop() for details
-                src (optional): a nirfasteruff.base.optode object of all sources. Only fields src.fixed and src.coord are mandatory.
-                det (optional): a nirfasteruff.base.optode object of all detectors. Only fields det.fixed and det.coord are mandatory.
-                link (optional): (NumPy array, any dtype convertible to int32) channel information. See class definition for details.
-            
-            mesh = nirfasteruff.base.stdn_mesh()
-            mesh.from_solid(ele, nodes, prop = None, src = None, det = None, link = None)
-            
-            J Cao, MILAB@UoB, 2024, NIRFASTerFF
-            '''
+
+            Parameters
+            ----------
+            ele : int/double NumPy array
+                element list in one-based indexing. If four columns, all nodes will be labeled as region 1
+                
+                If five columns, the last column will be used for region labeling.
+            nodes : double NumPy array
+                node locations in the mesh. Unit: mm. Size (NNodes,3).
+            prop : double NumPy array, optional
+                If not `None`, calls `stndmesh.set_prop()` and sets the optical properties in the mesh. The default is None.
+                
+                See :func:`~nirfasteruff.base.stndmesh.set_prop()` for details. 
+            src : nirfasteruff.base.optode, optional
+                If not `None`, sets the sources and moves them to the appropriate locations. The default is None.
+                
+                See :func:`~nirfasteruff.base.optode.touch_sources()` for details.
+            det : nirfasteruff.base.optode, optional
+                If not `None`, sets the detectors and moves them to the appropriate locations. The default is None.
+                
+                See :func:`~nirfasteruff.base.optode.touch_detectors()` for details.
+            link : int32 NumPy array, optional
+                If not `None`, sets the channel information. Uses one-based indexing. The default is None.
+                
+                Each row represents a channel, in the form of `[src, det, active]`, where `active` is 0 or 1
+                
+                If `link` contains only two columns, all channels are considered active.
+
+            Returns
+            -------
+            None.
+
+            """
+
             self.__init__()
             num_nodes = nodes.shape[0]
             self.nodes = np.ascontiguousarray(nodes, dtype=np.float64)
@@ -1416,9 +1682,8 @@ class base:
                     self.region[idx] = labels[i]
                 self.elements = np.ascontiguousarray(np.sort(ele[:,:-1],axis=1), dtype=np.float64)
             else:
-                print('Error: elements in wrong format')
-                self.__init__()
-                return
+                raise ValueError('Error: elements in wrong format')
+
             # find the boundary nodes: find faces that are referred to only once
             faces = np.r_[ele[:, [0,1,2]], 
                           ele[:, [0,1,3]],
@@ -1460,50 +1725,71 @@ class base:
                 print('Warning: no link specified')
         
         def from_volume(self, vol, param = utils.MeshingParams(), prop = None, src = None, det = None, link = None):
-            '''
-            Construct mesh from a segmented 3D volume using the built-in CGAL mesher. Calls stnd_mesh.from_solid after meshing step.
+            """
+            Construct mesh from a segmented 3D volume using the built-in CGAL mesher. Calls stndmesh.from_solid after meshing step.
+
+            Parameters
+            ----------
+            vol : uint8 NumPy array
+                3D segmented volume to be meshed. 0 is considered as outside. Regions labeled using unique integers.
+            param : nirfasteruff.utils.MeshingParams, optional
+                parameters used in the CGAL mesher. If not specified, uses the default parameters defined in nirfasteruff.utils.MeshingParams().
+                
+                Please modify fields xPixelSpacing, yPixelSpacing, and SliceThickness if your volume doesn't have [1,1,1] resolution
+                
+                See :func:`~nirfasteruff.utils.MeshingParams()` for details.
+            prop : double NumPy array, optional
+                If not `None`, calls `stndmesh.set_prop()` and sets the optical properties in the mesh. The default is None.
+                
+                See :func:`~nirfasteruff.base.stndmesh.set_prop()` for details. 
+            src : nirfasteruff.base.optode, optional
+                If not `None`, sets the sources and moves them to the appropriate locations. The default is None.
+                
+                See :func:`~nirfasteruff.base.optode.touch_sources()` for details.
+            det : nirfasteruff.base.optode, optional
+                If not `None`, sets the detectors and moves them to the appropriate locations. The default is None.
+                
+                See :func:`~nirfasteruff.base.optode.touch_detectors()` for details.
+            link : int32 NumPy array, optional
+                If not `None`, sets the channel information. Uses one-based indexing. The default is None.
+                
+                Each row represents a channel, in the form of `[src, det, active]`, where `active` is 0 or 1
+                
+                If `link` contains only two columns, all channels are considered active.
+
+            Returns
+            -------
+            None.
+
+            """
             
-            Input:
-                vol: (uint8 NumPy array) 3D segmented volume to be meshed. 0 is considered as outside. Regions labeled using unique integers
-                param (optional): parameters used for the mesher. See nirfasteruff.utils.MeshingParams for details. Default will be used if not specified.
-                                    Please modify fields xPixelSpacing, yPixelSpacing, and SliceThickness if your volume doesn't have [1,1,1] resolution
-                prop (optional): see stnd_mesh.from_solid
-                src (optional): see stnd_mesh.from_solid
-                det (optional): see stnd_mesh.from_solid
-                link (optional): see stnd_mesh.from_solid
-                
-            mesh = nirfasteruff.base.stnd_mesh()
-            mesh.from_volume(vol, param = utils.MeshingParams(), prop = None, src = None, det = None, link = None)
-                
-            J Cao, MILAB@UoB, 2024, NIRFASTerFF
-            '''
             if len(vol.shape) != 3:
-                print('Error: vol should be a 3D matrix in unit8')
-                return
+                raise TypeError('Error: vol should be a 3D matrix in unit8')
             print('Running CGAL mesher', flush=1)
             ele, nodes = meshing.RunCGALMeshGenerator(vol, param)
             print('Converting to NIRFAST format', flush=1)
             self.from_solid(ele, nodes, prop, src, det, link)
         
-        def from_cedalion(self, something):
-            # TO DO: create a mesh from cedalion model
-            pass
-        
         def set_prop(self, prop):
-            '''
+            """
             Set optical properties of the whole mesh, using information provided in prop.
-            
-            Input:
-                prop: (double NumPy array) opttical property info, similar to the MCX format:
-                                            [region mua(mm-1) musp(mm-1) ri]
-                                            [region mua(mm-1) musp(mm-1) ri]
-                                            [...]
-                        where 'region' is the region label, and they should match exactly with unique(mesh.region). The order doesn't matter.
-            
-            mesh.set_prop(prop)
-            
-            J Cao, MILAB@UoB, 2024, NIRFASTerFF
-            '''
+
+            Parameters
+            ----------
+            prop : double NumPy array
+                optical property info, similar to the MCX format::
+                    
+                    [region mua(mm-1) musp(mm-1) ri]
+                    [region mua(mm-1) musp(mm-1) ri]
+                    [...]
+                    
+                where 'region' is the region label, and they should match exactly with unique(mesh.region). The order doesn't matter.
+
+            Returns
+            -------
+            None.
+
+            """
             num_nodes = self.nodes.shape[0]
             self.mua = np.zeros(num_nodes)
             self.mus = np.zeros(num_nodes)
@@ -1533,20 +1819,24 @@ class base:
                 self.ksi = 1.0 / (2*A)
                 
         def change_prop(self, idx, prop):
-            '''
+            """
             Change optical properties (mua, musp, and ri) at nodes specified in idx, and automatically change fields kappa, c, and ksi as well
+
+            Parameters
+            ----------
+            idx : list or NumPy array or -1
+                zero-based indices of nodes to change. If `idx==-1`, function changes all the nodes
+            prop : list or NumPy array of length 3
+                new optical properties to be assigned to the specified nodes. [mua(mm-1) musp(mm-1) ri].
+
+            Returns
+            -------
+            None.
+
+            """
             
-            mesh.change_prop(idx, prop)
-            
-            Input:
-                idx: (list or NumPy array) zero-based indices of nodes to change
-                prop: (list or NumPy array of length 3) new optical properties to be assigned to the specified nodes. [mua(mm-1) musp(mm-1) ri]
-                
-            Output:
-                None
-            
-            J Cao, MILAB@UoB, 2024, NIRFASTerFF
-            '''
+            if np.size(idx)==1 and idx==-1:
+                idx = np.arange(self.nodes.shape[0])
             idx = np.array(idx, dtype = np.int32)
             self.mua[idx] = prop[0]
             self.mus[idx] = prop[1]
@@ -1563,16 +1853,16 @@ class base:
             self.ksi = 1.0 / (2*A)
         
         def touch_optodes(self):
-            '''
+            """
             Moves all optodes (if non fixed) and recalculate the integration functions (i.e. barycentric coordinates). 
-            See optode.touch_sources and optode.touch_detectors for details
             
-            Function has no input or output.
-            
-            mesh.touch_optodes()
-            
-            J Cao, MILAB@UoB, 2024, NIRFASTerFF
-            '''
+            See :func:`~nirfasteruff.base.optode.touch_sources()` and :func:`~nirfasteruff.base.optode.touch_detectors()` for details
+
+            Returns
+            -------
+            None.
+
+            """
             # make sure the optodes sit correctly: moved if needed, calculate the int func
             print('touching sources', flush=1)
             self.source.touch_sources(self)
@@ -1580,16 +1870,20 @@ class base:
             self.meas.touch_detectors(self)
         
         def save_nirfast(self, filename):
-            '''
-            Save mesh in the classic NIRFASTer ASCII format.
+            """
+            Save mesh in the classic NIRFASTer ASCII format, which is directly compatible with the Matlab version
+
+            Parameters
+            ----------
+            filename : str
+                name of the file to be saved as. Should have no extensions.
+
+            Returns
+            -------
+            None.
+
+            """
             
-            Input:
-                filename: name of the file to be saved as
-                
-            mesh.save_nirfast(filename)
-            
-            J Cao, MILAB@UoB, 2024, NIRFASTerFF
-            '''
             # save nodes
             np.savetxt(filename+'.node', np.c_[self.bndvtx, self.nodes], fmt='%.16g', delimiter='\t')
             # save elements
@@ -1649,22 +1943,37 @@ class base:
                 np.savetxt(filename+'.link', self.link, fmt='%g', delimiter=' ', header=hdr, comments='')
         
         def femdata(self, freq, solver=utils.get_solver(), opt=utils.SolverOptions()):
-            '''
+            """
             Calculates fluences for each source using a FEM solver, and then the boudary measurables for each channel 
-            See nirfasteruff.forward.femdata_stnd_CW and nirfasteruff.forward.femdata_stnd_FD for details
             
-            data, info = mesh.femdata(freq, solver=utils.get_solver(), opt=utils.SolverOptions())
+            If `mesh.vol` is set, fluence data will be represented in volumetric space
             
-            Input:
-                freq: modulation frequency in Hz. If CW, set to zero and a more efficient CW solver will be used
-                solver (optional): Choose between 'CPU' or 'GPU' solver (case insensitive). Automatically determined (GPU prioritized) if not specified
-                opt (optional): Solver options. See nirfasteruff.utils.SolverOptions for details
-            Output:
-                data: a nirfasteruff.base.FDdata object containing the fluence and measurables. See nirfasteruff.base.FDdata for details.
-                info: a nirfasteruff.utils.ConvergenceInfo object containing the convergence information. See nirfasteruff.utils.ConvergenceInfo for details
+            See :func:`~nirfasteruff.forward.femdata_stnd_CW()` and :func:`~nirfasteruff.forward.femdata_stnd_FD()` for details
+
+            Parameters
+            ----------
+            freq : double
+                modulation frequency in Hz. If CW, set to zero and a more efficient CW solver will be used.
+            solver : str, optional
+                Choose between 'CPU' or 'GPU' solver (case insensitive). Automatically determined (GPU prioritized) if not specified
+            opt : nirfasteruff.utils.SolverOptions, optional
+                Solver options. Uses default parameters if not specified, and they should suffice in most cases. 
                 
-            J Cao, MILAB@UoB, 2024, NIRFASTerFF
-            '''
+                See :func:`~nirfasteruff.utils.SolverOptions` for details
+
+            Returns
+            -------
+            data : nirfasteruff.base.FDdata
+                fluence and boundary measurables given the mesh and optodes.
+                
+                See :func:`~nirfasteruff.base.FDdata` for details.
+            info : nirfasteruff.utils.ConvergenceInfo
+                convergence information of the solver.
+                
+                See :func:`~nirfasteruff.utils.ConvergenceInfo` for details
+
+            """
+            
             # freq in Hz
             if freq==0:
                 data, info = forward.femdata_stnd_CW(self, solver, opt)
@@ -1674,38 +1983,48 @@ class base:
                 return data, info
             
         def isvol(self):
-            '''
+            """
             Check if convertion matrices between mesh and volumetric spaces are calculated
+
+            Returns
+            -------
+            bool
+                True if attribute `.vol` is calculate, False if not.
+
+            """
             
-            isvol = mesh.isvol()
-            
-            Input: None
-            Output: bool
-            
-            J Cao, MILAB@UoB, 2024, NIRFASTerFF
-            '''
             if len(self.vol.xgrid):
                 return True
             else:
                 return False
             
         def gen_intmat(self, xgrid, ygrid, zgrid=[]):
-            '''
+            """
             Calculate the information needed to convert data between mesh and volumetric space, specified by x, y, z (if 3D) grids.
+            
             All grids must be uniform. The results will from a nirfasteruff.base.meshvol object stored in field .vol
+            
             If field .vol already exists, it will be calculated again, and a warning will be thrown
+
+            Parameters
+            ----------
+            xgrid : double NumPy array
+                x grid in mm.
+            ygrid : double NumPy array
+                x grid in mm.
+            zgrid : double NumPy array, optional
+                x grid in mm. Leave empty for 2D meshes. The default is [].
             
-            See nirfasteruff.base.meshvol for details
-            
-            Input:
-                xgrid: x grid in mm
-                ygrid: y grid in mm
-                zgrid: z grid in mm. Leave empty for 2D meshes.
-            Output:
-                None
-            
-            J Cao, MILAB@UoB, 2024, NIRFASTerFF
-            '''
+            Raises
+            ------
+            ValueError
+                if grids not uniform, or zgrid empty for 3D mesh
+
+            Returns
+            -------
+            None.
+
+            """
             xgrid = np.float64(np.array(xgrid).squeeze())
             ygrid = np.float64(np.array(ygrid).squeeze())
             zgrid = np.float64(np.array(zgrid).squeeze())
@@ -1774,7 +2093,7 @@ class base:
                     cube_coord = nodes0 + (loweridx[i,:] * self.vol.res + start)
                     tet_vtx = cube_coord[ele0[ind0[i], :], :]
                     rel_idx = (tet_vtx - start) / self.vol.res
-                    raw_idx[i,:] = rel_idx[:,2]*len(xgrid)*len(ygrid) + rel_idx[:,0]*len(xgrid) + rel_idx[:,1] # zero-based
+                    raw_idx[i,:] = rel_idx[:,2]*len(xgrid)*len(ygrid) + rel_idx[:,0]*len(ygrid) + rel_idx[:,1] # zero-based
                 
                 outvec = (loweridx[:,0]<0) | (loweridx[:,1]<0) | (loweridx[:,2]<0)
                 inside = np.flatnonzero(~outvec)
@@ -1826,82 +2145,127 @@ class math:
     Dummy class holding some low-level functions. Be careful using them: they interact closely with the C++ functions and wrong arguments used can cause unexpected crashes.
     Dummy class used so the function hierarchy can be compatible with the full version
     '''   
-    def gen_mass_matrix(mesh, freq, solver = utils.get_solver(), GPU = -1):
-        '''
+    def gen_mass_matrix(mesh, omega, solver = utils.get_solver(), GPU = -1):
+        """
         Calculate the MASS matrix, and return the coordinates in CSR format.
+        
         The current Matlab version outputs COO format, so the results are NOT directly compatible
+        
         If calculation fails on GPU (if chosen), it will generate a warning and automatically switch to CPU
+
+        Parameters
+        ----------
+        mesh : nirfasteruff.base.stndmesh
+            the mesh used to calculate the MASS matrix.
+        omega : double
+            modulation frequency, in radian.
+        solver : str, optional
+            Choose between 'CPU' or 'GPU' solver (case insensitive). Automatically determined (GPU prioritized) if not specified
+        GPU : int, optional
+            GPU selection. -1 for automatic, 0, 1, ... for manual selection on multi-GPU systems. The default is -1.
+
+        Raises
+        ------
+        RuntimeError
+            if both CUDA and CPU versions fail.
+        TypeError
+            if 'solver' is not 'CPU' or 'GPU'.
+
+        Returns
+        -------
+        csrI: int32 NumPy vector, zero-based
+            I indices of the MASS matrix, in CSR format. Size (NNodes,)
+        csrJ: int32 NumPy vector, zero-based
+            J indices of the MASS matrix, in CSR format. Size (nnz(MASS),)
+        csrV: float64 or complex128 NumPy vector
+            values of the MASS matrix, in CSR format. Size (nnz(MASS),)
+
+        """
         
-        csrI, csrJ, csrV = gen_mass_matrix(mesh, freq, solver = utils.get_solver(), GPU = -1)
-        
-        Input:
-            mesh: a nirfasteruff.base.stnd_mesh object
-            freq: modulation frequency, in Hz
-            solver (optional): choose between the GPU and CPU solver by specifying 'GPU' or 'CPU' (case insensitive).
-                                Automatic selection if left unspecified, in which case GPU will take priority
-            GPU (default=-1): GPU selection. -1 for automatic, 0, 1, ... for manual selection on multi-GPU systems
-        Output:
-            csrI: (uint32 NumPy array) I indices of the MASS matrix, in CSR format. Size (NNodes,)
-            csrJ: (uint32 NumPy array) J indices of the MASS matrix, in CSR format. Size (nnz(MASS),)
-            csrV: (float64/complex128 NumPy array) values of the MASS matrix, in CSR format. Size (nnz(MASS),)
-            
-        J Cao, MILAB@UoB, 2024, NIRFASTerFF
-        '''
         if solver.lower()=='gpu' and not utils.isCUDA():
             solver = 'CPU'
             print('Warning: No capable CUDA device found. using CPU instead')
             
         if solver.lower()=='gpu' and utils.isCUDA():
             try:
-                [csrI, csrJ, csrV] = nirfasteruff_cuda.gen_mass_matrix(mesh.nodes, mesh.elements, mesh.bndvtx, mesh.mua, mesh.kappa, mesh.ksi, mesh.c, freq, GPU)
-                if freq==0:
+                [csrI, csrJ, csrV] = nirfasteruff_cuda.gen_mass_matrix(mesh.nodes, mesh.elements, mesh.bndvtx, mesh.mua, mesh.kappa, mesh.ksi, mesh.c, omega, GPU)
+                if omega==0:
                     csrV = np.real(csrV)
             except:
                 print('Warning: GPU code failed. Rolling back to CPU code')
                 try:
-                    [csrI, csrJ, csrV] = nirfasteruff_cpu.gen_mass_matrix(mesh.nodes, mesh.elements, mesh.bndvtx, mesh.mua, mesh.kappa, mesh.ksi, mesh.c, freq)
-                    if freq==0:
+                    [csrI, csrJ, csrV] = nirfasteruff_cpu.gen_mass_matrix(mesh.nodes, mesh.elements, mesh.bndvtx, mesh.mua, mesh.kappa, mesh.ksi, mesh.c, omega)
+                    if omega==0:
                         csrV = np.real(csrV)    
                 except:
-                    print('Error: couldn''t generate mass matrix')
-                    return 0, 0, 0
+                    raise RuntimeError('Error: couldn''t generate mass matrix')
         elif solver.lower()=='cpu':
             try:
-                [csrI, csrJ, csrV] = nirfasteruff_cpu.gen_mass_matrix(mesh.nodes, mesh.elements, mesh.bndvtx, mesh.mua, mesh.kappa, mesh.ksi, mesh.c, freq)
-                if freq==0:
+                [csrI, csrJ, csrV] = nirfasteruff_cpu.gen_mass_matrix(mesh.nodes, mesh.elements, mesh.bndvtx, mesh.mua, mesh.kappa, mesh.ksi, mesh.c, omega)
+                if omega==0:
                     csrV = np.real(csrV) 
             except:
-                print('Error: couldn''t generate mass matrix')
-                return 0, 0, 0
+                raise RuntimeError('Error: couldn''t generate mass matrix')
         else:
-            print('Error: Solver should be ''GPU'' or ''CPU''')
-            return 0, 0, 0
+            raise TypeError('Error: Solver should be ''GPU'' or ''CPU''')
             
         return csrI, csrJ, np.ascontiguousarray(csrV)
     
     def get_field_CW(csrI, csrJ, csrV, qvec, opt = utils.SolverOptions(), solver=utils.get_solver()):
-        '''
+        """
         Call the Preconditioned Conjugate Gradient solver with FSAI preconditioner. For CW data only.
+        
         The current Matlab version uses COO format input, so they are NOT directly compatible
+        
         If calculation fails on GPU (if chosen), it will generate a warning and automatically switch to CPU.
+        
         On GPU, the algorithm first tries to solve for all sources simultaneously, but this can fail due to insufficient GPU memory.
+        
         If this is the case, it will generate a warning and solve the sources one by one. The latter is not as fast, but requires much less memory.
+        
         On CPU, the algorithm only solves the sources one by one.
+
+        Parameters
+        ----------
+        csrI : int32 NumPy vector, zero-based
+            I indices of the MASS matrix, in CSR format.
+        csrJ : int32 NumPy vector, zero-based
+            J indices of the MASS matrix, in CSR format.
+        csrV : double NumPy vector
+            values of the MASS matrix, in CSR format.
+        qvec : double NumPy array, or Scipy CSC sparse matrix
+            The source vectors. i-th column corresponds to source i. Size (NNode, NSource)
+            
+            See :func:`~nirfasteruff.math.gen_sources()` for details.
+        solver : str, optional
+            Choose between 'CPU' or 'GPU' solver (case insensitive). Automatically determined (GPU prioritized) if not specified
+        opt : nirfasteruff.utils.SolverOptions, optional
+            Solver options. Uses default parameters if not specified, and they should suffice in most cases. 
+            
+            See :func:`~nirfasteruff.utils.SolverOptions` for details
+
+        Raises
+        ------
+        TypeError
+            if MASS matrix and source vectors are not both real, or if solver is not 'CPU' or 'GPU'.
+        RuntimeError
+            if both GPU and CPU solvers fail.
+
+        Returns
+        -------
+        phi: double NumPy array
+            Calculated fluence at each source. Size (NNodes, Nsources)
+        info: nirfasteruff.utils.ConvergenceInfo 
+            convergence information of the solver.
+            
+            See :func:`~nirfasteruff.utils.ConvergenceInfo` for details
         
-        phi, info = get_field_CW(csrI, csrJ, csrV, qvec, opt = utils.SolverOptions(), solver=utils.get_solver())
+        See Also
+        -------
+        :func:`~nirfasteruff.math.gen_mass_matrix()`
+
+        """
         
-        Input:
-            csrI, csrJ, csrV: MASS matrix in CSR format. See nirfasteruff.math.gen_mass_matrix for details
-            qvec: (float64 NumPy array, or Scipy CSC sparse matrix) source vectors.
-            opt (optional): Solver options. See nirfasteruff.utils.SolverOptions for details
-            solver (optional): choose between the GPU and CPU solver by specifying 'GPU' or 'CPU' (case insensitive).
-                                Automatic selection if left unspecified, in which case GPU will take priority
-        Output:
-            phi: (float64 NumPy array) Calculated fluence at each source. Size (NNodes, Nsources)
-            info: a nirfasteruff.utils.ConvergenceInfo object containing the convergence information
-        
-        J Cao, MILAB@UoB, 2024, NIRFASTerFF
-        '''
         if not (np.isreal(csrV).all() and np.isrealobj(qvec)):
             raise TypeError('MASS matrix and qvec should be both real')
         if solver.lower()=='gpu' and not utils.isCUDA():
@@ -1914,45 +2278,76 @@ class math:
             except:
                 print('Warning: GPU solver failed. Rolling back to CPU solver')
                 try:
-                    [phi, info] = nirfasteruff_cpu.get_field_CW(csrI, csrJ, csrV, qvec, opt.max_iter, opt.AbsoluteTolerance, opt.RelativeTolerance, opt.divergence)  
+                    [phi, info] = nirfasteruff_cpu.get_field_CW(csrI, csrJ, csrV, qvec, opt.max_iter, opt.AbsoluteTolerance, opt.RelativeTolerance, opt.divergence, utils.get_nthread())  
                 except:
-                    print('Error: solver failed')
-                    return np.array([]), []
+                    raise RuntimeError('Error: solver failed')
         elif solver.lower()=='cpu':
             try:
-                [phi, info] = nirfasteruff_cpu.get_field_CW(csrI, csrJ, csrV, qvec, opt.max_iter, opt.AbsoluteTolerance, opt.RelativeTolerance, opt.divergence)  
+                [phi, info] = nirfasteruff_cpu.get_field_CW(csrI, csrJ, csrV, qvec, opt.max_iter, opt.AbsoluteTolerance, opt.RelativeTolerance, opt.divergence, utils.get_nthread())  
             except:
-                print('Error: solver failed')
-                return np.array([]), []
+                raise RuntimeError('Error: solver failed')
         else:
-            print('Error: Solver should be ''GPU'' or ''CPU''')
-            return np.array([]), []
+            raise TypeError('Error: Solver should be ''GPU'' or ''CPU''')
             
         return phi, utils.ConvergenceInfo(info)
     
     def get_field_FD(csrI, csrJ, csrV, qvec, opt = utils.SolverOptions(), solver=utils.get_solver()):
-        '''
-        Call the Preconditioned BiConjugate Stablized solver with FSAI preconditioner. For FD data only
+        """
+        Call the Preconditioned BiConjugate Stablized solver with FSAI preconditioner. 
+        
+        This is designed for FD data, but can also work for CW is an all-zero imaginary part is added to the MASS matrix and source vectors.
+        
         The current Matlab version uses COO format input, so they are NOT directly compatible
+        
         If calculation fails on GPU (if chosen), it will generate a warning and automatically switch to CPU.
+        
         On GPU, the algorithm first tries to solve for all sources simultaneously, but this can fail due to insufficient GPU memory.
+        
         If this is the case, it will generate a warning and solve the sources one by one. The latter is not as fast, but requires much less memory.
+        
         On CPU, the algorithm only solves the sources one by one.
+
+        Parameters
+        ----------
+        csrI : int32 NumPy vector, zero-based
+            I indices of the MASS matrix, in CSR format.
+        csrJ : int32 NumPy vector, zero-based
+            J indices of the MASS matrix, in CSR format.
+        csrV : complex double NumPy vector
+            values of the MASS matrix, in CSR format.
+        qvec : complex double NumPy array, or Scipy CSC sparse matrix
+            The source vectors. i-th column corresponds to source i. Size (NNode, NSource)
+            
+            See :func:`~nirfasteruff.math.gen_sources()` for details.
+        solver : str, optional
+            Choose between 'CPU' or 'GPU' solver (case insensitive). Automatically determined (GPU prioritized) if not specified
+        opt : nirfasteruff.utils.SolverOptions, optional
+            Solver options. Uses default parameters if not specified, and they should suffice in most cases. 
+            
+            See :func:`~nirfasteruff.utils.SolverOptions` for details
+
+        Raises
+        ------
+        TypeError
+            if MASS matrix and source vectors are not both complex, or if solver is not 'CPU' or 'GPU'.
+        RuntimeError
+            if both GPU and CPU solvers fail.
+
+        Returns
+        -------
+        phi: complex double NumPy array
+            Calculated fluence at each source. Size (NNodes, Nsources)
+        info: nirfasteruff.utils.ConvergenceInfo 
+            convergence information of the solver.
+            
+            See :func:`~nirfasteruff.utils.ConvergenceInfo` for details
         
-        phi, info = get_field_FD(csrI, csrJ, csrV, qvec, opt = utils.SolverOptions(), solver=utils.get_solver())
+        See Also
+        -------
+        :func:`~nirfasteruff.math.gen_mass_matrix()`
+
+        """
         
-        Input:
-            csrI, csrJ, csrV: MASS matrix in CSR format. See nirfasteruff.math.gen_mass_matrix for details
-            qvec: (complex128 NumPy array, or Scipy CSC sparse matrix) source vectors
-            opt (optional): Solver options. See nirfasteruff.utils.SolverOptions for details
-            solver (optional): choose between the GPU and CPU solver by specifying 'GPU' or 'CPU' (case insensitive).
-                                Automatic selection if left unspecified, in which case GPU will take priority
-        Output:
-            phi: (complex128 NumPy array) Calculated fluence at each source. Size (NNodes, Nsources)
-            info: a nirfasteruff.utils.ConvergenceInfo object containing the convergence information
-        
-        J Cao, MILAB@UoB, 2024, NIRFASTerFF
-        '''
         if not np.all(np.iscomplex(csrV).all() and np.iscomplexobj(qvec)):
             raise TypeError('MASS matrix and qvec should be both complex')
         if solver.lower()=='gpu' and not utils.isCUDA():
@@ -1965,35 +2360,35 @@ class math:
             except:
                 print('Warning: GPU solver failed. Rolling back to CPU solver')
                 try:
-                    [phi, info] = nirfasteruff_cpu.get_field_FD(csrI, csrJ, csrV, qvec, opt.max_iter, opt.AbsoluteTolerance, opt.RelativeTolerance, opt.divergence)  
+                    [phi, info] = nirfasteruff_cpu.get_field_FD(csrI, csrJ, csrV, qvec, opt.max_iter, opt.AbsoluteTolerance, opt.RelativeTolerance, opt.divergence, utils.get_nthread())  
                 except:
-                    print('Error: solver failed')
-                    return np.array([]), []
+                    raise RuntimeError('Error: solver failed')
         elif solver.lower()=='cpu':
             try:
-                [phi, info] = nirfasteruff_cpu.get_field_FD(csrI, csrJ, csrV, qvec, opt.max_iter, opt.AbsoluteTolerance, opt.RelativeTolerance, opt.divergence)  
+                [phi, info] = nirfasteruff_cpu.get_field_FD(csrI, csrJ, csrV, qvec, opt.max_iter, opt.AbsoluteTolerance, opt.RelativeTolerance, opt.divergence, utils.get_nthread())  
             except:
-                print('Error: solver failed')
-                return np.array([]), []
+                raise RuntimeError('Error: solver failed')
         else:
-            print('Error: Solver should be ''GPU'' or ''CPU''')
-            return np.array([]), []
+            raise TypeError('Error: Solver should be ''GPU'' or ''CPU''')
             
         return phi, utils.ConvergenceInfo(info)
     
     def gen_sources(mesh):
-        '''
+        """
         Calculate the source vectors (point source only) for the sources in mesh.source field
+
+        Parameters
+        ----------
+        mesh : NIRFASTer mesh type
+            mesh used to calculate the source vectors. Source information is also defined here.
+
+        Returns
+        -------
+        qvec : complex double NumPy array
+            source vectors, where each column corresponds to one source. Size (NNodes, Nsources).
+
+        """
         
-        qvec = gen_sources(mesh)
-        
-        Input:
-            mesh: a nirfasteruff.base.stnd_mesh object
-        Output:
-            qvec: (complex128 Scipy CSC sparse matrix) source vectors. Size (NNodes, Nsources)
-            
-        J Cao, MILAB@UoB, 2024, NIRFASTerFF
-        '''
         link = copy.deepcopy(mesh.link)
         active = np.unique(link[link[:,2]==1,0]) - 1
         qvec = np.zeros((mesh.nodes.shape[0], active.size), dtype=np.complex128)
@@ -2003,26 +2398,32 @@ class math:
         else:
             ind = np.int32(mesh.source.int_func[:, 0]) - 1 # to zero-indexing
             int_func = mesh.source.int_func[:, 1:]
-        for i in range(active.size):
-            src = active[i]
-            qvec[np.int32(mesh.elements[ind[src],:]-1), i] = int_func[src,:]
-        return sparse.csc_matrix(qvec)
+        
+        dim = mesh.dimension
+        qvec = sparse.csc_matrix((int_func[active,:].flatten(), (np.int32(mesh.elements[ind,:]-1).flatten(), np.repeat(np.arange(active.size),dim+1))),
+                                 shape=(mesh.nodes.shape[0], active.size), dtype=np.complex128)
+        return qvec
     
     def get_boundary_data(mesh, phi):
-        '''
-        Calculate the measured fluence at each channel
+        """
+        Calculates boundary data given the field data in mesh
         
-        data = get_boundary_data(mesh, phi)
-        
-        Input:
-            mesh: a nirfasteruff.base.stnd_mesh object
-            phi: (float64/complex128 NumPy array) fluence as is calculated by the CW or FD solver. 
-                    See nirfasteruff.math.get_field_CW and nirfasteruff.math.get_field_FD
-        Output:
-            data: (float64/complex128 NumPy array) measured boundary data at each channel. Size (NChannels,)
-            
-        J Cao, MILAB@UoB, 2024, NIRFASTerFF
-        '''
+        The field data can be any of the supported type: fluence, TPSF, or moments
+
+        Parameters
+        ----------
+        mesh : nirfasteruff mesh type
+            the mesh whose boundary and detectors are used for the calculation.
+        phi : double or complex double NumPy array
+            field data as calculated by one of the 'get_field_*' solvers. Size (NNodes, NSources)
+
+        Returns
+        -------
+        data : double or complex double NumPy array
+            measured boundary data at each channel. Size (NChannels,).
+
+        """
+       
         if len(mesh.meas.int_func) == 0:
             print('Calculating missing detectors integration functions.')
             ind, int_func = utils.pointLocation(mesh, mesh.meas.coord)
@@ -2034,7 +2435,8 @@ class math:
         link[:,:2] -= 1  # to zero-indexing
         active_src = list(np.unique(link[link[:,2]==1,0]))
         bnd = mesh.bndvtx>0
-        data = np.zeros(link.shape[0], dtype=np.complex128)
+        data = np.zeros(link.shape[0], dtype=phi.dtype)
+
         for i in range(link.shape[0]):
             if link[i,2]==0:
                 data[i] = np.nan
@@ -2053,22 +2455,52 @@ class forward:
     Dummy class used so the function hierarchy can be compatible with the full version
     ''' 
     def femdata_stnd_CW(mesh, solver = utils.get_solver(), opt = utils.SolverOptions()):
-        '''
+        """
         Forward modeling for CW. Please consider using mesh.femdata(0) instead.
-        The function calculates the MASS matrix, the source vectors, and calls the CW solver.
         
-        data, info = femdata_stnd_CW(mesh, solver = utils.get_solver(), opt = utils.SolverOptions())
+        The function calculates the FEM MASS matrix, the source vectors, and calls the CW solver (preconditioned conjugated gradient).
+
+        Parameters
+        ----------
+        mesh : nirfasteruff.base.stndmesh
+            the mesh used to calcuate the forward data.
+        solver : str, optional
+            Choose between 'CPU' or 'GPU' solver (case insensitive). Automatically determined (GPU prioritized) if not specified
+        opt : nirfasteruff.utils.SolverOptions, optional
+            Solver options. Uses default parameters if not specified, and they should suffice in most cases. 
+            
+            See :func:`~nirfasteruff.utils.SolverOptions` for details
+
+        Raises
+        ------
+        TypeError
+            If mesh is not a stnd mesh.
+
+        Returns
+        -------
+        data : nirfasteruff.base.FDdata
+            fluence and boundary measurables given the mesh and optodes.
+            
+            If mesh.vol is defined, the returned fluence will be in volumetric space
+            
+            See :func:`~nirfasteruff.base.FDdata` for details.
+        info : nirfasteruff.utils.ConvergenceInfo
+            convergence information of the solver.
+            
+            See :func:`~nirfasteruff.utils.ConvergenceInfo` for details
+            
+        See Also
+        --------
+        :func:`~nirfasteruff.math.get_field_CW()`, :func:`~nirfasteruff.math.gen_mass_matrix()`, and :func:`~nirfasteruff.math.gen_sources()`
+
+        """
         
-        See nirfasteruff.base.stnd_mesh.femdata, nirfasteruff.math.get_field_CW, nirfasteruff.math.gen_mass_matrix, and nirfasteruff.math.gen_sources for details.
-        
-        J Cao, MILAB@UoB, 2024, NIRFASTerFF
-        '''
-        print("Calculating the MASS matrix", flush=1)
+        # print("Calculating the MASS matrix", flush=1)
         csrI, csrJ, csrV = math.gen_mass_matrix(mesh, 0., solver, opt.GPU)
         qvec = math.gen_sources(mesh)
         qvec = np.abs(qvec)
         data = base.FDdata()
-        print("Solving the system", flush=1)
+        # print("Solving the system", flush=1)
         data.phi, info = math.get_field_CW(csrI, csrJ, csrV, qvec, opt, solver)
         data.complex = math.get_boundary_data(mesh, data.phi)
         data.link = copy.deepcopy(mesh.link)
@@ -2087,24 +2519,58 @@ class forward:
         return data, info
     
     def femdata_stnd_FD(mesh, freq, solver = utils.get_solver(), opt = utils.SolverOptions()):
-        '''
+        """
         Forward modeling for FD. Please consider using mesh.femdata(freq) instead. freq in Hz
-        The function calculates the MASS matrix, the source vectors, and calls the FD solver.
         
-        data, info = femdata_stnd_FD(mesh, freq, solver = utils.get_solver(), opt = utils.SolverOptions())
+        The function calculates the MASS matrix, the source vectors, and calls the FD solver (preconditioned BiCGStab).
+
+        Parameters
+        ----------
+        mesh : nirfasteruff.base.stndmesh
+            the mesh used to calcuate the forward data.
+        freq : double
+            modulation frequency in Hz. 
+            
+            When it is 0, function continues with the BiCGstab solver, but generates a warning that the CW solver should be used for better performance
+        solver : str, optional
+            Choose between 'CPU' or 'GPU' solver (case insensitive). Automatically determined (GPU prioritized) if not specified
+        opt : nirfasteruff.utils.SolverOptions, optional
+            Solver options. Uses default parameters if not specified, and they should suffice in most cases. 
+            
+            See :func:`~nirfasteruff.utils.SolverOptions` for details
+
+        Raises
+        ------
+        TypeError
+            If mesh is not a stnd mesh.
+
+        Returns
+        -------
+        data : nirfasteruff.base.FDdata
+            fluence and boundary measurables given the mesh and optodes.
+            
+            If mesh.vol is defined, the returned fluence will be in volumetric space
+            
+            See :func:`~nirfasteruff.base.FDdata` for details.
+        info : nirfasteruff.utils.ConvergenceInfo
+            convergence information of the solver.
+            
+            See :func:`~nirfasteruff.utils.ConvergenceInfo` for details
         
-        See nirfasteruff.base.stnd_mesh.femdata, nirfasteruff.math.get_field_FD, nirfasteruff.math.gen_mass_matrix, and nirfasteruff.math.gen_sources for details.
+        See Also
+        --------
+        :func:`~nirfasteruff.math.get_field_FD()`, :func:`~nirfasteruff.math.gen_mass_matrix()`, and :func:`~nirfasteruff.math.gen_sources()`
+
+        """
         
-        J Cao, MILAB@UoB, 2024, NIRFASTerFF
-        '''
         if freq==0:
             print('Warning: Use femdata_stnd_CW for better performance')
         freq = freq * 2 * np.pi
-        print("Calculating the MASS matrix", flush=1)
+        # print("Calculating the MASS matrix", flush=1)
         csrI, csrJ, csrV = math.gen_mass_matrix(mesh, freq, solver, opt.GPU)
         qvec = math.gen_sources(mesh)
         data = base.FDdata()
-        print("Solving the system", flush=1)
+        # print("Solving the system", flush=1)
         data.phi, info = math.get_field_FD(csrI, csrJ, csrV, qvec, opt, solver)
         data.complex = math.get_boundary_data(mesh, data.phi)
         data.link = copy.deepcopy(mesh.link)

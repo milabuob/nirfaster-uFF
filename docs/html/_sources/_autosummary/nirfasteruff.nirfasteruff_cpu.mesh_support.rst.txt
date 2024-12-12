@@ -1,0 +1,6 @@
+nirfasteruff.nirfasteruff\_cpu.mesh\_support
+============================================
+
+.. currentmodule:: nirfasteruff.nirfasteruff_cpu
+
+.. autofunction:: mesh_support

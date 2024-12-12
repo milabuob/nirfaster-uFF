@@ -1,0 +1,6 @@
+nirfasteruff.nirfasteruff\_cuda.gen\_mass\_matrix
+=================================================
+
+.. currentmodule:: nirfasteruff.nirfasteruff_cuda
+
+.. autofunction:: gen_mass_matrix

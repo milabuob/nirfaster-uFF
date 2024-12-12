@@ -1,0 +1,25 @@
+nirfasteruff.nirfasteruff.base
+==============================
+
+.. currentmodule:: nirfasteruff.nirfasteruff
+
+.. autoclass:: base
+   :members:                                    
+   :show-inheritance:                           
+   :inherited-members:                          
+
+   
+   .. automethod:: __init__
+
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~base.__init__
+   
+   
+
+   
+   
+   

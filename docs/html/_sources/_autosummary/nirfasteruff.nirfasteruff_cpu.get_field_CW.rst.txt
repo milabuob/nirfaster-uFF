@@ -1,0 +1,6 @@
+nirfasteruff.nirfasteruff\_cpu.get\_field\_CW
+=============================================
+
+.. currentmodule:: nirfasteruff.nirfasteruff_cpu
+
+.. autofunction:: get_field_CW

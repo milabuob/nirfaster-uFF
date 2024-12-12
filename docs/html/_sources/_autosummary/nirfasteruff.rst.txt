@@ -1,0 +1,34 @@
+﻿nirfasteruff
+============
+
+.. automodule:: nirfasteruff
+  
+   
+   
+   
+
+   
+   
+   
+
+   
+   
+   
+
+   
+   
+   
+
+
+
+.. rubric:: Modules
+
+.. autosummary::
+   :toctree:
+   :template: custom-module-template.rst                 
+   :recursive:
+
+   nirfasteruff.nirfasteruff
+   nirfasteruff.nirfasteruff_cpu
+   nirfasteruff.nirfasteruff_cuda
+

@@ -1,3 +1,5 @@
-__version__ = '0.9.6'
+__version__ = '1.0.0'
+__author__ = 'J Cao, MILAB@UoB'
+__year__ = '2024'
 from .nirfasteruff import *
 

@@ -1,0 +1,30 @@
+nirfasteruff.nirfasteruff.math
+==============================
+
+.. currentmodule:: nirfasteruff.nirfasteruff
+
+.. autoclass:: math
+   :members:                                    
+   :show-inheritance:                           
+   :inherited-members:                          
+
+   
+   .. automethod:: __init__
+
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~math.__init__
+      ~math.gen_mass_matrix
+      ~math.gen_sources
+      ~math.get_boundary_data
+      ~math.get_field_CW
+      ~math.get_field_FD
+   
+   
+
+   
+   
+   

@@ -1,0 +1,27 @@
+nirfasteruff.nirfasteruff.io
+============================
+
+.. currentmodule:: nirfasteruff.nirfasteruff
+
+.. autoclass:: io
+   :members:                                    
+   :show-inheritance:                           
+   :inherited-members:                          
+
+   
+   .. automethod:: __init__
+
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~io.__init__
+      ~io.readMEDIT
+      ~io.saveinr
+   
+   
+
+   
+   
+   
