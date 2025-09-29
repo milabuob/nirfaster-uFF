@@ -8,6 +8,7 @@ from scipy import spatial
 import os
 import psutil
 import subprocess
+from skimage import measure
 
 from . import nirfasteruff_cpu
 
@@ -144,7 +145,7 @@ class utils:
             t = 1
         
         point = A + (B-A)*t
-        dist = np.linalg.norm(p - point)     
+        dist = np.linalg.norm(p - point)
         return dist, point
     
     def pointTriangleDistance(TRI, P):
@@ -478,6 +479,36 @@ class utils:
             self.subdomain = subdomain
             self.smooth = lloyd_smooth
             self.offset = offset
+    
+    class MeshingParams2D:
+        """
+        Parameters to be used by the Triangle mesher. Note: they should all be double
+        
+        Attributes
+        ----------
+            mm_per_pixel: double
+                pixel size in both directions, in millimeter. Default: 1.0
+            max_area: double scalar or Numpy array
+                maximum area per triangle, before scaling with mm_per_pixel. If scalar, same value is applied to all triangles
+                
+                If Numpy array, it must follow this format::
+                    
+                    [1 area1]
+                    [2 area2]
+                    ...
+                
+                where max area for each labeled region is specified individually. ALL regions must be given a value
+                
+                Default: 2.0
+            offset: Numpy array or list
+                offset to be added (in mm) at the very end of the meshing (that is, after scaling). Size must be 2
+                
+                Default: None, i.e. no offset to be added
+        """
+        def __init__(self, mm_per_pixel = 1.0, max_area = 2.0, offset = None):
+            self.mm_per_pixel = mm_per_pixel
+            self.max_area = max_area
+            self.offset = offset
 
 class io:
     '''
@@ -717,6 +748,119 @@ class meshing:
         os.remove(tmpinrfn)
         os.remove(tmpcritfn)
         return ele, nodes
+    
+    def img2mesh(img, opt = utils.MeshingParams2D()):
+        """
+        Creates 2D mesh from a labeled image. Using Jonathan Shewchuk's Triangle, with arguments -pPqQaA.
+        
+        The different regions are labeled using continuously ascending integers starting from 1. 0 pixels are background.
+    
+        Parameters
+        ----------
+        img : integer Numpy array
+            2D image defining the space to mesh. Regions defined by different integers. 0 is background.
+        opt : nirfasterff.utils.MeshingParams, optional
+            meshing parameters used. Default values will be used if not specified.
+            
+            See :func:`nirfasterff.utils.MeshingParams2D` for details
+    
+        Raises
+        ------
+        ValueError
+            if the specified max areas mismatch with number of levels, or if the labels are not continuous.
+    
+        Returns
+        -------
+        mesh_e : int NumPy array
+            element list calculated by the mesher, one-based. Last column indicates the region each element belongs to
+        mesh_n : double NumPy array
+            element list calculated by the mesher, in mm.
+        
+        References
+        -----------
+        https://www.cs.cmu.edu/~quake/triangle.html
+    
+        """
+        if not np.all(np.int32(img)==img):
+            print('Warning: input mask must be integer. I am doing the conversion now, but this can lead to unexpected errors!', flush=1)
+            img = np.int32(img)
+        
+        tmppolyfn = '._input.poly'
+        tmpresultfn = '._input.1'
+    
+        levels = np.unique(img).squeeze()
+        if levels.min()==0:
+            levels = levels[1:]
+        nlevels = np.size(levels)
+        if np.size(opt.max_area)==1:
+            params = np.c_[np.arange(nlevels)+1, opt.max_area*np.ones(nlevels)]
+        else:
+            if opt.max_area.shape[0]!=nlevels:
+                raise ValueError('Specified max areas mismatch with number of levels')
+            elif not np.all(np.arange(nlevels)+1 == levels):
+                raise ValueError('Labels must be continuously ascending, i.e. 1,2,3...')
+            params = opt.max_area
+        
+        allnodes = np.empty((0,2))
+        allele = np.empty((0,2))
+        node_cnt = 0
+        for iso in range(nlevels):
+            # get contour line per level
+            cs = measure.find_contours(img, iso+1-0.1)
+            ncontours = len(cs)
+    
+            for i in range(ncontours):
+                allnodes = np.r_[allnodes, cs[i][:-1,:]]
+                nnodes = cs[i].shape[0]-1
+                ele = np.r_[np.array([[nnodes,1]]), np.c_[np.arange(nnodes-1)+1, np.arange(nnodes-1)+2]]
+                ele += node_cnt
+                node_cnt += nnodes
+                allele = np.r_[allele, ele]
+        labels, nlabel = measure.label(img, return_num=1) # connected components in the image, so we can label the regions
+        # now write to a poly file
+        fp = open(tmppolyfn, 'w')
+        # nodes
+        fp.write('%d 2 0 0\n'%node_cnt)
+        for i in range(node_cnt):
+            fp.write('%d\t%.12f\t%.12f\n'%(i+1, allnodes[i,0], allnodes[i,1]))
+        # now elements
+        fp.write('%d 0\n'%allele.shape[0])
+        for i in range(allele.shape[0]):
+            fp.write('%d\t%d\t%d\n'%(i+1, allele[i,0], allele[i,1]))
+        fp.write('0\n')
+        fp.write('%d\n'%nlabel)
+        for i in range(nlabel):
+            tmp = np.argwhere(labels==i+1)
+            region_img = img[tmp[0,0], tmp[0,1]] # using the first pixel. Any would do
+            fp.write('%d %.12f %.12f %d %f\n'%(i+1, tmp[0,0], tmp[0,1], region_img, params[params[:,0]==region_img, 1][0]))
+        fp.close()
+        # call the mesher
+        binpath = os.path.dirname(os.path.abspath(nirfasteruff_cpu.__file__))
+        if platform.system() == 'Darwin':
+            mesherbin = binpath + '/triangleMAC'
+            status = subprocess.run([mesherbin, '-pPqQaA', tmppolyfn])
+        elif platform.system() == 'Linux':
+            mesherbin = binpath + '/triangleLINUX'
+            status = subprocess.run([mesherbin, '-pPqQaA', tmppolyfn])
+        elif platform.system() == 'Windows':
+            mesherbin = binpath + '\\triangle.exe'
+            status = subprocess.run([mesherbin, '-pPqQaA', tmppolyfn])
+        else:
+            raise TypeError('Unsupported operating system: '+platform.system())
+        status.check_returncode()
+        # read the results
+        tmp = np.genfromtxt(tmpresultfn+'.node', skip_header=1)
+        mesh_n = tmp[:,1:3]*opt.mm_per_pixel # nodes, scaled
+        if np.all(opt.offset != None):
+            mesh_n += np.array(opt.offset) # add the offset, if any
+        tmp = np.genfromtxt(tmpresultfn+'.ele', skip_header=1)
+        mesh_e = tmp[:,1:] # one-based elements, where the last column is the region label
+        # remove the tmpfiles
+        os.remove(tmppolyfn)
+        os.remove(tmpresultfn+'.node')
+        os.remove(tmpresultfn+'.ele')
+        return np.int32(mesh_e), mesh_n
+    
                 
 
 class base:  
@@ -1723,6 +1867,103 @@ class base:
                     print('Warning: link in wrong format. Ignored.')
             else:
                 print('Warning: no link specified')
+                
+        def from_triangle(self, ele, nodes, prop = None, src = None, det = None, link = None):
+            """
+            Construct a NIRFASTer mesh from a 2D triangular mesh generated by a mesher.
+            
+            Can also set the optical properties and optodes if supplied
+
+            Parameters
+            ----------
+            ele : int/double NumPy array
+                element list in one-based indexing. If three columns, all nodes will be labeled as region 1
+                
+                If four columns, the last column will be used for region labeling.
+            nodes : double NumPy array
+                node locations in the mesh. Unit: mm. Size (NNodes,2).
+            prop : double NumPy array, optional
+                If not `None`, calls `stndmesh.set_prop()` and sets the optical properties in the mesh. The default is None.
+                
+                See :func:`~nirfasteruff.base.stndmesh.set_prop()` for details. 
+            src : nirfasteruff.base.optode, optional
+                If not `None`, sets the sources and moves them to the appropriate locations. The default is None.
+                
+                See :func:`~nirfasteruff.base.optode.touch_sources()` for details.
+            det : nirfasteruff.base.optode, optional
+                If not `None`, sets the detectors and moves them to the appropriate locations. The default is None.
+                
+                See :func:`~nirfasteruff.base.optode.touch_detectors()` for details.
+            link : int32 NumPy array, optional
+                If not `None`, sets the channel information. Uses one-based indexing. The default is None.
+                
+                Each row represents a channel, in the form of `[src, det, active]`, where `active` is 0 or 1
+                
+                If `link` contains only two columns, all channels are considered active.
+
+            Returns
+            -------
+            None.
+
+            """
+
+            self.__init__()
+            num_nodes = nodes.shape[0]
+            self.nodes = np.ascontiguousarray(nodes, dtype=np.float64)
+            if ele.shape[1] == 3:
+                # no region label
+                self.elements = np.ascontiguousarray(np.sort(ele,axis=1), dtype=np.float64)
+                self.region = np.ones(num_nodes)
+            elif ele.shape[1] == 4:
+                self.region = np.zeros(num_nodes)
+                # convert element label to node label
+                labels = np.unique(ele[:,-1])
+                for i in range(len(labels)):
+                    tmp = ele[ele[:,-1]==labels[i], :-1]
+                    idx = np.int32(np.unique(tmp) - 1)
+                    self.region[idx] = labels[i]
+                self.elements = np.ascontiguousarray(np.sort(ele[:,:-1],axis=1), dtype=np.float64)
+            else:
+                raise ValueError('Error: elements in wrong format')
+
+            # find the boundary nodes: find faces that are referred to only once
+            faces = np.r_[ele[:, [0,1]], 
+                          ele[:, [0,2]],
+                          ele[:, [1,2]]]
+            
+            faces = np.sort(faces)
+            unique_faces, cnt = np.unique(faces, axis=0, return_counts=1)
+            bnd_faces = unique_faces[cnt==1, :]
+            bndvtx = np.unique(bnd_faces)
+            self.bndvtx = np.zeros(nodes.shape[0])
+            self.bndvtx[np.int32(bndvtx-1)] = 1
+            # area and support for each element
+            self.element_area = nirfasteruff_cpu.ele_area(self.nodes, self.elements)
+            self.support = nirfasteruff_cpu.mesh_support(self.nodes, self.elements, self.element_area)
+            self.dimension = 2
+            if np.any(prop != None):
+                self.set_prop(prop)
+            else:
+                print('Warning: optical properties not specified')
+            if src != None:
+                self.source = copy.deepcopy(src)
+                self.source.touch_sources(self)
+            else:
+                print('Warning: no sources specified')
+            if det != None:
+                self.meas = copy.deepcopy(det)
+                self.meas.touch_detectors(self)
+            else:
+                print('Warning: no detectors specified')
+            if np.all(link != None):
+                if link.shape[1]==3:
+                    self.link = copy.deepcopy(np.ascontiguousarray(link, dtype=np.int32))
+                elif link.shape[1]==2:
+                    self.link = copy.deepcopy(np.ascontiguousarray(np.c_[link, np.ones(link.shape[0])], dtype=np.int32))
+                else:
+                    print('Warning: link in wrong format. Ignored.')
+            else:
+                print('Warning: no link specified')
         
         def from_volume(self, vol, param = utils.MeshingParams(), prop = None, src = None, det = None, link = None):
             """
@@ -1769,6 +2010,56 @@ class base:
             ele, nodes = meshing.RunCGALMeshGenerator(vol, param)
             print('Converting to NIRFAST format', flush=1)
             self.from_solid(ele, nodes, prop, src, det, link)
+            
+        def from_image(self, img, param = utils.MeshingParams2D(), prop = None, src = None, det = None, link = None):
+            """
+            Construct mesh from a segmented 2D image using JR Shewchuk's Triangle. Calls stndmesh.from_triangle after meshing step.
+
+            Parameters
+            ----------
+            vol : uint8 NumPy array
+                2D segmented image to be meshed. 0 is considered as outside. Regions labeled using unique integers.
+            param : nirfasteruff.utils.MeshingParams2D, optional
+                parameters used in Triangle. If not specified, uses the default parameters defined in nirfasteruff.utils.MeshingParams2D().
+                
+                Please modify field mm_per_pixel if your image doesn't have [1,1,1] resolution
+                
+                See :func:`~nirfasteruff.utils.MeshingParams2D()` for details.
+            prop : double NumPy array, optional
+                If not `None`, calls `stndmesh.set_prop()` and sets the optical properties in the mesh. The default is None.
+                
+                See :func:`~nirfasteruff.base.stndmesh.set_prop()` for details. 
+            src : nirfasteruff.base.optode, optional
+                If not `None`, sets the sources and moves them to the appropriate locations. The default is None.
+                
+                See :func:`~nirfasteruff.base.optode.touch_sources()` for details.
+            det : nirfasteruff.base.optode, optional
+                If not `None`, sets the detectors and moves them to the appropriate locations. The default is None.
+                
+                See :func:`~nirfasteruff.base.optode.touch_detectors()` for details.
+            link : int32 NumPy array, optional
+                If not `None`, sets the channel information. Uses one-based indexing. The default is None.
+                
+                Each row represents a channel, in the form of `[src, det, active]`, where `active` is 0 or 1
+                
+                If `link` contains only two columns, all channels are considered active.
+
+            Returns
+            -------
+            None.
+            
+            References
+            -----------
+            https://www.cs.cmu.edu/~quake/triangle.html
+
+            """
+            
+            if len(img.shape) != 2:
+                raise TypeError('Error: img should be a 2D matrix in unit8')
+            print('Running Triangle', flush=1)
+            ele, nodes = meshing.img2mesh(img, param)
+            print('Converting to NIRFAST format', flush=1)
+            self.from_triangle(ele, nodes, prop, src, det, link)
         
         def set_prop(self, prop):
             """
@@ -2095,7 +2386,7 @@ class base:
                     rel_idx = (tet_vtx - start) / self.vol.res
                     raw_idx[i,:] = rel_idx[:,2]*len(xgrid)*len(ygrid) + rel_idx[:,0]*len(ygrid) + rel_idx[:,1] # zero-based
                 
-                outvec = (loweridx[:,0]<0) | (loweridx[:,1]<0) | (loweridx[:,2]<0)
+                outvec = np.sum(self.nodes<np.array([xgrid.min(), ygrid.min(), zgrid.min()]), axis=1) | np.sum(self.nodes>np.array([xgrid.max(), ygrid.max(), zgrid.max()]), axis=1)
                 inside = np.flatnonzero(~outvec)
                 # if any of the queried nodes was not asigned a value in the previous step,
                 # treat it as an outside node and extrapolate. Otherwise the boundary elements will have smaller values than they should
@@ -2122,7 +2413,7 @@ class base:
                     rel_idx = (tet_vtx - start) / self.vol.res
                     raw_idx[i,:] = rel_idx[:,0]*len(ygrid) + rel_idx[:,1] # zero-based
                 
-                outvec = (loweridx[:,0]<0) | (loweridx[:,1]<0)
+                outvec = np.sum(self.nodes<np.array([xgrid.min(), ygrid.min()]), axis=1) | np.sum(self.nodes>np.array([xgrid.max(), ygrid.max()]), axis=1)
                 inside = np.flatnonzero(~outvec)
                 # if any of the queried nodes was not asigned a value in the previous step,
                 # treat it as an outside node and extrapolate. Otherwise the boundary elements will have smaller values than they should

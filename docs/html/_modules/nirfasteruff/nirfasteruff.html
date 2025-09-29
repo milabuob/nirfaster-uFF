@@ -5,14 +5,14 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>nirfasteruff.nirfasteruff &mdash; NIRFASTerUFF 1.0.0 documentation</title>
+  <title>nirfasteruff.nirfasteruff &mdash; NIRFASTerUFF 1.2.0 documentation</title>
       <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=92fd9be5" />
       <link rel="stylesheet" type="text/css" href="../../_static/css/theme.css?v=e59714d7" />
 
   
       <script src="../../_static/jquery.js?v=5d32c60e"></script>
       <script src="../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
-      <script src="../../_static/documentation_options.js?v=8d563738"></script>
+      <script src="../../_static/documentation_options.js?v=6efca38a"></script>
       <script src="../../_static/doctools.js?v=9a2dae69"></script>
       <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="../../_static/js/theme.js"></script>
@@ -78,6 +78,7 @@
 <span class="kn">import</span> <span class="nn">os</span>
 <span class="kn">import</span> <span class="nn">psutil</span>
 <span class="kn">import</span> <span class="nn">subprocess</span>
+<span class="kn">from</span> <span class="nn">skimage</span> <span class="kn">import</span> <span class="n">measure</span>
 
 <span class="kn">from</span> <span class="nn">.</span> <span class="kn">import</span> <span class="n">nirfasteruff_cpu</span>
 
@@ -230,7 +231,7 @@
             <span class="n">t</span> <span class="o">=</span> <span class="mi">1</span>
         
         <span class="n">point</span> <span class="o">=</span> <span class="n">A</span> <span class="o">+</span> <span class="p">(</span><span class="n">B</span><span class="o">-</span><span class="n">A</span><span class="p">)</span><span class="o">*</span><span class="n">t</span>
-        <span class="n">dist</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">norm</span><span class="p">(</span><span class="n">p</span> <span class="o">-</span> <span class="n">point</span><span class="p">)</span>     
+        <span class="n">dist</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">norm</span><span class="p">(</span><span class="n">p</span> <span class="o">-</span> <span class="n">point</span><span class="p">)</span>
         <span class="k">return</span> <span class="n">dist</span><span class="p">,</span> <span class="n">point</span></div>
 
     
@@ -579,6 +580,39 @@
             <span class="bp">self</span><span class="o">.</span><span class="n">subdomain</span> <span class="o">=</span> <span class="n">subdomain</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">smooth</span> <span class="o">=</span> <span class="n">lloyd_smooth</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">offset</span> <span class="o">=</span> <span class="n">offset</span></div>
+
+    
+<div class="viewcode-block" id="utils.MeshingParams2D">
+<a class="viewcode-back" href="../../_autosummary/nirfasteruff.nirfasteruff.utils.html#nirfasteruff.nirfasteruff.utils.MeshingParams2D">[docs]</a>
+    <span class="k">class</span> <span class="nc">MeshingParams2D</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Parameters to be used by the Triangle mesher. Note: they should all be double</span>
+<span class="sd">        </span>
+<span class="sd">        Attributes</span>
+<span class="sd">        ----------</span>
+<span class="sd">            mm_per_pixel: double</span>
+<span class="sd">                pixel size in both directions, in millimeter. Default: 1.0</span>
+<span class="sd">            max_area: double scalar or Numpy array</span>
+<span class="sd">                maximum area per triangle, before scaling with mm_per_pixel. If scalar, same value is applied to all triangles</span>
+<span class="sd">                </span>
+<span class="sd">                If Numpy array, it must follow this format::</span>
+<span class="sd">                    </span>
+<span class="sd">                    [1 area1]</span>
+<span class="sd">                    [2 area2]</span>
+<span class="sd">                    ...</span>
+<span class="sd">                </span>
+<span class="sd">                where max area for each labeled region is specified individually. ALL regions must be given a value</span>
+<span class="sd">                </span>
+<span class="sd">                Default: 2.0</span>
+<span class="sd">            offset: Numpy array or list</span>
+<span class="sd">                offset to be added (in mm) at the very end of the meshing (that is, after scaling). Size must be 2</span>
+<span class="sd">                </span>
+<span class="sd">                Default: None, i.e. no offset to be added</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">mm_per_pixel</span> <span class="o">=</span> <span class="mf">1.0</span><span class="p">,</span> <span class="n">max_area</span> <span class="o">=</span> <span class="mf">2.0</span><span class="p">,</span> <span class="n">offset</span> <span class="o">=</span> <span class="kc">None</span><span class="p">):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">mm_per_pixel</span> <span class="o">=</span> <span class="n">mm_per_pixel</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">max_area</span> <span class="o">=</span> <span class="n">max_area</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">offset</span> <span class="o">=</span> <span class="n">offset</span></div>
 </div>
 
 
@@ -833,8 +867,124 @@
         <span class="n">os</span><span class="o">.</span><span class="n">remove</span><span class="p">(</span><span class="n">tmpinrfn</span><span class="p">)</span>
         <span class="n">os</span><span class="o">.</span><span class="n">remove</span><span class="p">(</span><span class="n">tmpcritfn</span><span class="p">)</span>
         <span class="k">return</span> <span class="n">ele</span><span class="p">,</span> <span class="n">nodes</span></div>
+
+    
+<div class="viewcode-block" id="meshing.img2mesh">
+<a class="viewcode-back" href="../../_autosummary/nirfasteruff.nirfasteruff.meshing.html#nirfasteruff.nirfasteruff.meshing.img2mesh">[docs]</a>
+    <span class="k">def</span> <span class="nf">img2mesh</span><span class="p">(</span><span class="n">img</span><span class="p">,</span> <span class="n">opt</span> <span class="o">=</span> <span class="n">utils</span><span class="o">.</span><span class="n">MeshingParams2D</span><span class="p">()):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Creates 2D mesh from a labeled image. Using Jonathan Shewchuk&#39;s Triangle, with arguments -pPqQaA.</span>
+<span class="sd">        </span>
+<span class="sd">        The different regions are labeled using continuously ascending integers starting from 1. 0 pixels are background.</span>
+<span class="sd">    </span>
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        img : integer Numpy array</span>
+<span class="sd">            2D image defining the space to mesh. Regions defined by different integers. 0 is background.</span>
+<span class="sd">        opt : nirfasterff.utils.MeshingParams, optional</span>
+<span class="sd">            meshing parameters used. Default values will be used if not specified.</span>
+<span class="sd">            </span>
+<span class="sd">            See :func:`nirfasterff.utils.MeshingParams2D` for details</span>
+<span class="sd">    </span>
+<span class="sd">        Raises</span>
+<span class="sd">        ------</span>
+<span class="sd">        ValueError</span>
+<span class="sd">            if the specified max areas mismatch with number of levels, or if the labels are not continuous.</span>
+<span class="sd">    </span>
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        mesh_e : int NumPy array</span>
+<span class="sd">            element list calculated by the mesher, one-based. Last column indicates the region each element belongs to</span>
+<span class="sd">        mesh_n : double NumPy array</span>
+<span class="sd">            element list calculated by the mesher, in mm.</span>
+<span class="sd">        </span>
+<span class="sd">        References</span>
+<span class="sd">        -----------</span>
+<span class="sd">        https://www.cs.cmu.edu/~quake/triangle.html</span>
+<span class="sd">    </span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">np</span><span class="o">.</span><span class="n">all</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">int32</span><span class="p">(</span><span class="n">img</span><span class="p">)</span><span class="o">==</span><span class="n">img</span><span class="p">):</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Warning: input mask must be integer. I am doing the conversion now, but this can lead to unexpected errors!&#39;</span><span class="p">,</span> <span class="n">flush</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+            <span class="n">img</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">int32</span><span class="p">(</span><span class="n">img</span><span class="p">)</span>
+        
+        <span class="n">tmppolyfn</span> <span class="o">=</span> <span class="s1">&#39;._input.poly&#39;</span>
+        <span class="n">tmpresultfn</span> <span class="o">=</span> <span class="s1">&#39;._input.1&#39;</span>
+    
+        <span class="n">levels</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">unique</span><span class="p">(</span><span class="n">img</span><span class="p">)</span><span class="o">.</span><span class="n">squeeze</span><span class="p">()</span>
+        <span class="k">if</span> <span class="n">levels</span><span class="o">.</span><span class="n">min</span><span class="p">()</span><span class="o">==</span><span class="mi">0</span><span class="p">:</span>
+            <span class="n">levels</span> <span class="o">=</span> <span class="n">levels</span><span class="p">[</span><span class="mi">1</span><span class="p">:]</span>
+        <span class="n">nlevels</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">size</span><span class="p">(</span><span class="n">levels</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">size</span><span class="p">(</span><span class="n">opt</span><span class="o">.</span><span class="n">max_area</span><span class="p">)</span><span class="o">==</span><span class="mi">1</span><span class="p">:</span>
+            <span class="n">params</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">c_</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="n">nlevels</span><span class="p">)</span><span class="o">+</span><span class="mi">1</span><span class="p">,</span> <span class="n">opt</span><span class="o">.</span><span class="n">max_area</span><span class="o">*</span><span class="n">np</span><span class="o">.</span><span class="n">ones</span><span class="p">(</span><span class="n">nlevels</span><span class="p">)]</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">opt</span><span class="o">.</span><span class="n">max_area</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">!=</span><span class="n">nlevels</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s1">&#39;Specified max areas mismatch with number of levels&#39;</span><span class="p">)</span>
+            <span class="k">elif</span> <span class="ow">not</span> <span class="n">np</span><span class="o">.</span><span class="n">all</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="n">nlevels</span><span class="p">)</span><span class="o">+</span><span class="mi">1</span> <span class="o">==</span> <span class="n">levels</span><span class="p">):</span>
+                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s1">&#39;Labels must be continuously ascending, i.e. 1,2,3...&#39;</span><span class="p">)</span>
+            <span class="n">params</span> <span class="o">=</span> <span class="n">opt</span><span class="o">.</span><span class="n">max_area</span>
+        
+        <span class="n">allnodes</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">empty</span><span class="p">((</span><span class="mi">0</span><span class="p">,</span><span class="mi">2</span><span class="p">))</span>
+        <span class="n">allele</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">empty</span><span class="p">((</span><span class="mi">0</span><span class="p">,</span><span class="mi">2</span><span class="p">))</span>
+        <span class="n">node_cnt</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="k">for</span> <span class="n">iso</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">nlevels</span><span class="p">):</span>
+            <span class="c1"># get contour line per level</span>
+            <span class="n">cs</span> <span class="o">=</span> <span class="n">measure</span><span class="o">.</span><span class="n">find_contours</span><span class="p">(</span><span class="n">img</span><span class="p">,</span> <span class="n">iso</span><span class="o">+</span><span class="mi">1</span><span class="o">-</span><span class="mf">0.1</span><span class="p">)</span>
+            <span class="n">ncontours</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">cs</span><span class="p">)</span>
+    
+            <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">ncontours</span><span class="p">):</span>
+                <span class="n">allnodes</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">r_</span><span class="p">[</span><span class="n">allnodes</span><span class="p">,</span> <span class="n">cs</span><span class="p">[</span><span class="n">i</span><span class="p">][:</span><span class="o">-</span><span class="mi">1</span><span class="p">,:]]</span>
+                <span class="n">nnodes</span> <span class="o">=</span> <span class="n">cs</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">-</span><span class="mi">1</span>
+                <span class="n">ele</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">r_</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([[</span><span class="n">nnodes</span><span class="p">,</span><span class="mi">1</span><span class="p">]]),</span> <span class="n">np</span><span class="o">.</span><span class="n">c_</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="n">nnodes</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span><span class="o">+</span><span class="mi">1</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="n">nnodes</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span><span class="o">+</span><span class="mi">2</span><span class="p">]]</span>
+                <span class="n">ele</span> <span class="o">+=</span> <span class="n">node_cnt</span>
+                <span class="n">node_cnt</span> <span class="o">+=</span> <span class="n">nnodes</span>
+                <span class="n">allele</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">r_</span><span class="p">[</span><span class="n">allele</span><span class="p">,</span> <span class="n">ele</span><span class="p">]</span>
+        <span class="n">labels</span><span class="p">,</span> <span class="n">nlabel</span> <span class="o">=</span> <span class="n">measure</span><span class="o">.</span><span class="n">label</span><span class="p">(</span><span class="n">img</span><span class="p">,</span> <span class="n">return_num</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span> <span class="c1"># connected components in the image, so we can label the regions</span>
+        <span class="c1"># now write to a poly file</span>
+        <span class="n">fp</span> <span class="o">=</span> <span class="nb">open</span><span class="p">(</span><span class="n">tmppolyfn</span><span class="p">,</span> <span class="s1">&#39;w&#39;</span><span class="p">)</span>
+        <span class="c1"># nodes</span>
+        <span class="n">fp</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s1">&#39;</span><span class="si">%d</span><span class="s1"> 2 0 0</span><span class="se">\n</span><span class="s1">&#39;</span><span class="o">%</span><span class="n">node_cnt</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">node_cnt</span><span class="p">):</span>
+            <span class="n">fp</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s1">&#39;</span><span class="si">%d</span><span class="se">\t</span><span class="si">%.12f</span><span class="se">\t</span><span class="si">%.12f</span><span class="se">\n</span><span class="s1">&#39;</span><span class="o">%</span><span class="p">(</span><span class="n">i</span><span class="o">+</span><span class="mi">1</span><span class="p">,</span> <span class="n">allnodes</span><span class="p">[</span><span class="n">i</span><span class="p">,</span><span class="mi">0</span><span class="p">],</span> <span class="n">allnodes</span><span class="p">[</span><span class="n">i</span><span class="p">,</span><span class="mi">1</span><span class="p">]))</span>
+        <span class="c1"># now elements</span>
+        <span class="n">fp</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s1">&#39;</span><span class="si">%d</span><span class="s1"> 0</span><span class="se">\n</span><span class="s1">&#39;</span><span class="o">%</span><span class="n">allele</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">allele</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]):</span>
+            <span class="n">fp</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s1">&#39;</span><span class="si">%d</span><span class="se">\t</span><span class="si">%d</span><span class="se">\t</span><span class="si">%d</span><span class="se">\n</span><span class="s1">&#39;</span><span class="o">%</span><span class="p">(</span><span class="n">i</span><span class="o">+</span><span class="mi">1</span><span class="p">,</span> <span class="n">allele</span><span class="p">[</span><span class="n">i</span><span class="p">,</span><span class="mi">0</span><span class="p">],</span> <span class="n">allele</span><span class="p">[</span><span class="n">i</span><span class="p">,</span><span class="mi">1</span><span class="p">]))</span>
+        <span class="n">fp</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s1">&#39;0</span><span class="se">\n</span><span class="s1">&#39;</span><span class="p">)</span>
+        <span class="n">fp</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s1">&#39;</span><span class="si">%d</span><span class="se">\n</span><span class="s1">&#39;</span><span class="o">%</span><span class="n">nlabel</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">nlabel</span><span class="p">):</span>
+            <span class="n">tmp</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">argwhere</span><span class="p">(</span><span class="n">labels</span><span class="o">==</span><span class="n">i</span><span class="o">+</span><span class="mi">1</span><span class="p">)</span>
+            <span class="n">region_img</span> <span class="o">=</span> <span class="n">img</span><span class="p">[</span><span class="n">tmp</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span><span class="mi">0</span><span class="p">],</span> <span class="n">tmp</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span><span class="mi">1</span><span class="p">]]</span> <span class="c1"># using the first pixel. Any would do</span>
+            <span class="n">fp</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s1">&#39;</span><span class="si">%d</span><span class="s1"> </span><span class="si">%.12f</span><span class="s1"> </span><span class="si">%.12f</span><span class="s1"> </span><span class="si">%d</span><span class="s1"> </span><span class="si">%f</span><span class="se">\n</span><span class="s1">&#39;</span><span class="o">%</span><span class="p">(</span><span class="n">i</span><span class="o">+</span><span class="mi">1</span><span class="p">,</span> <span class="n">tmp</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span><span class="mi">0</span><span class="p">],</span> <span class="n">tmp</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span><span class="mi">1</span><span class="p">],</span> <span class="n">region_img</span><span class="p">,</span> <span class="n">params</span><span class="p">[</span><span class="n">params</span><span class="p">[:,</span><span class="mi">0</span><span class="p">]</span><span class="o">==</span><span class="n">region_img</span><span class="p">,</span> <span class="mi">1</span><span class="p">][</span><span class="mi">0</span><span class="p">]))</span>
+        <span class="n">fp</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+        <span class="c1"># call the mesher</span>
+        <span class="n">binpath</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">dirname</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">abspath</span><span class="p">(</span><span class="n">nirfasteruff_cpu</span><span class="o">.</span><span class="vm">__file__</span><span class="p">))</span>
+        <span class="k">if</span> <span class="n">platform</span><span class="o">.</span><span class="n">system</span><span class="p">()</span> <span class="o">==</span> <span class="s1">&#39;Darwin&#39;</span><span class="p">:</span>
+            <span class="n">mesherbin</span> <span class="o">=</span> <span class="n">binpath</span> <span class="o">+</span> <span class="s1">&#39;/triangleMAC&#39;</span>
+            <span class="n">status</span> <span class="o">=</span> <span class="n">subprocess</span><span class="o">.</span><span class="n">run</span><span class="p">([</span><span class="n">mesherbin</span><span class="p">,</span> <span class="s1">&#39;-pPqQaA&#39;</span><span class="p">,</span> <span class="n">tmppolyfn</span><span class="p">])</span>
+        <span class="k">elif</span> <span class="n">platform</span><span class="o">.</span><span class="n">system</span><span class="p">()</span> <span class="o">==</span> <span class="s1">&#39;Linux&#39;</span><span class="p">:</span>
+            <span class="n">mesherbin</span> <span class="o">=</span> <span class="n">binpath</span> <span class="o">+</span> <span class="s1">&#39;/triangleLINUX&#39;</span>
+            <span class="n">status</span> <span class="o">=</span> <span class="n">subprocess</span><span class="o">.</span><span class="n">run</span><span class="p">([</span><span class="n">mesherbin</span><span class="p">,</span> <span class="s1">&#39;-pPqQaA&#39;</span><span class="p">,</span> <span class="n">tmppolyfn</span><span class="p">])</span>
+        <span class="k">elif</span> <span class="n">platform</span><span class="o">.</span><span class="n">system</span><span class="p">()</span> <span class="o">==</span> <span class="s1">&#39;Windows&#39;</span><span class="p">:</span>
+            <span class="n">mesherbin</span> <span class="o">=</span> <span class="n">binpath</span> <span class="o">+</span> <span class="s1">&#39;</span><span class="se">\\</span><span class="s1">triangle.exe&#39;</span>
+            <span class="n">status</span> <span class="o">=</span> <span class="n">subprocess</span><span class="o">.</span><span class="n">run</span><span class="p">([</span><span class="n">mesherbin</span><span class="p">,</span> <span class="s1">&#39;-pPqQaA&#39;</span><span class="p">,</span> <span class="n">tmppolyfn</span><span class="p">])</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="s1">&#39;Unsupported operating system: &#39;</span><span class="o">+</span><span class="n">platform</span><span class="o">.</span><span class="n">system</span><span class="p">())</span>
+        <span class="n">status</span><span class="o">.</span><span class="n">check_returncode</span><span class="p">()</span>
+        <span class="c1"># read the results</span>
+        <span class="n">tmp</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">genfromtxt</span><span class="p">(</span><span class="n">tmpresultfn</span><span class="o">+</span><span class="s1">&#39;.node&#39;</span><span class="p">,</span> <span class="n">skip_header</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+        <span class="n">mesh_n</span> <span class="o">=</span> <span class="n">tmp</span><span class="p">[:,</span><span class="mi">1</span><span class="p">:</span><span class="mi">3</span><span class="p">]</span><span class="o">*</span><span class="n">opt</span><span class="o">.</span><span class="n">mm_per_pixel</span> <span class="c1"># nodes, scaled</span>
+        <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">all</span><span class="p">(</span><span class="n">opt</span><span class="o">.</span><span class="n">offset</span> <span class="o">!=</span> <span class="kc">None</span><span class="p">):</span>
+            <span class="n">mesh_n</span> <span class="o">+=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">opt</span><span class="o">.</span><span class="n">offset</span><span class="p">)</span> <span class="c1"># add the offset, if any</span>
+        <span class="n">tmp</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">genfromtxt</span><span class="p">(</span><span class="n">tmpresultfn</span><span class="o">+</span><span class="s1">&#39;.ele&#39;</span><span class="p">,</span> <span class="n">skip_header</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+        <span class="n">mesh_e</span> <span class="o">=</span> <span class="n">tmp</span><span class="p">[:,</span><span class="mi">1</span><span class="p">:]</span> <span class="c1"># one-based elements, where the last column is the region label</span>
+        <span class="c1"># remove the tmpfiles</span>
+        <span class="n">os</span><span class="o">.</span><span class="n">remove</span><span class="p">(</span><span class="n">tmppolyfn</span><span class="p">)</span>
+        <span class="n">os</span><span class="o">.</span><span class="n">remove</span><span class="p">(</span><span class="n">tmpresultfn</span><span class="o">+</span><span class="s1">&#39;.node&#39;</span><span class="p">)</span>
+        <span class="n">os</span><span class="o">.</span><span class="n">remove</span><span class="p">(</span><span class="n">tmpresultfn</span><span class="o">+</span><span class="s1">&#39;.ele&#39;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">int32</span><span class="p">(</span><span class="n">mesh_e</span><span class="p">),</span> <span class="n">mesh_n</span></div>
 </div>
 
+    
                 
 
 <div class="viewcode-block" id="base">
@@ -1887,6 +2037,106 @@
             <span class="k">else</span><span class="p">:</span>
                 <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Warning: no link specified&#39;</span><span class="p">)</span></div>
 
+                
+<div class="viewcode-block" id="base.stndmesh.from_triangle">
+<a class="viewcode-back" href="../../_autosummary/nirfasteruff.nirfasteruff.base.html#nirfasteruff.nirfasteruff.base.stndmesh.from_triangle">[docs]</a>
+        <span class="k">def</span> <span class="nf">from_triangle</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">ele</span><span class="p">,</span> <span class="n">nodes</span><span class="p">,</span> <span class="n">prop</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">src</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">det</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">link</span> <span class="o">=</span> <span class="kc">None</span><span class="p">):</span>
+<span class="w">            </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">            Construct a NIRFASTer mesh from a 2D triangular mesh generated by a mesher.</span>
+<span class="sd">            </span>
+<span class="sd">            Can also set the optical properties and optodes if supplied</span>
+
+<span class="sd">            Parameters</span>
+<span class="sd">            ----------</span>
+<span class="sd">            ele : int/double NumPy array</span>
+<span class="sd">                element list in one-based indexing. If three columns, all nodes will be labeled as region 1</span>
+<span class="sd">                </span>
+<span class="sd">                If four columns, the last column will be used for region labeling.</span>
+<span class="sd">            nodes : double NumPy array</span>
+<span class="sd">                node locations in the mesh. Unit: mm. Size (NNodes,2).</span>
+<span class="sd">            prop : double NumPy array, optional</span>
+<span class="sd">                If not `None`, calls `stndmesh.set_prop()` and sets the optical properties in the mesh. The default is None.</span>
+<span class="sd">                </span>
+<span class="sd">                See :func:`~nirfasteruff.base.stndmesh.set_prop()` for details. </span>
+<span class="sd">            src : nirfasteruff.base.optode, optional</span>
+<span class="sd">                If not `None`, sets the sources and moves them to the appropriate locations. The default is None.</span>
+<span class="sd">                </span>
+<span class="sd">                See :func:`~nirfasteruff.base.optode.touch_sources()` for details.</span>
+<span class="sd">            det : nirfasteruff.base.optode, optional</span>
+<span class="sd">                If not `None`, sets the detectors and moves them to the appropriate locations. The default is None.</span>
+<span class="sd">                </span>
+<span class="sd">                See :func:`~nirfasteruff.base.optode.touch_detectors()` for details.</span>
+<span class="sd">            link : int32 NumPy array, optional</span>
+<span class="sd">                If not `None`, sets the channel information. Uses one-based indexing. The default is None.</span>
+<span class="sd">                </span>
+<span class="sd">                Each row represents a channel, in the form of `[src, det, active]`, where `active` is 0 or 1</span>
+<span class="sd">                </span>
+<span class="sd">                If `link` contains only two columns, all channels are considered active.</span>
+
+<span class="sd">            Returns</span>
+<span class="sd">            -------</span>
+<span class="sd">            None.</span>
+
+<span class="sd">            &quot;&quot;&quot;</span>
+
+            <span class="bp">self</span><span class="o">.</span><span class="fm">__init__</span><span class="p">()</span>
+            <span class="n">num_nodes</span> <span class="o">=</span> <span class="n">nodes</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">nodes</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">ascontiguousarray</span><span class="p">(</span><span class="n">nodes</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">ele</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">==</span> <span class="mi">3</span><span class="p">:</span>
+                <span class="c1"># no region label</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">elements</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">ascontiguousarray</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">sort</span><span class="p">(</span><span class="n">ele</span><span class="p">,</span><span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">region</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">ones</span><span class="p">(</span><span class="n">num_nodes</span><span class="p">)</span>
+            <span class="k">elif</span> <span class="n">ele</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">==</span> <span class="mi">4</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">region</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">num_nodes</span><span class="p">)</span>
+                <span class="c1"># convert element label to node label</span>
+                <span class="n">labels</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">unique</span><span class="p">(</span><span class="n">ele</span><span class="p">[:,</span><span class="o">-</span><span class="mi">1</span><span class="p">])</span>
+                <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">labels</span><span class="p">)):</span>
+                    <span class="n">tmp</span> <span class="o">=</span> <span class="n">ele</span><span class="p">[</span><span class="n">ele</span><span class="p">[:,</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span><span class="o">==</span><span class="n">labels</span><span class="p">[</span><span class="n">i</span><span class="p">],</span> <span class="p">:</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+                    <span class="n">idx</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">int32</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">unique</span><span class="p">(</span><span class="n">tmp</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">region</span><span class="p">[</span><span class="n">idx</span><span class="p">]</span> <span class="o">=</span> <span class="n">labels</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">elements</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">ascontiguousarray</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">sort</span><span class="p">(</span><span class="n">ele</span><span class="p">[:,:</span><span class="o">-</span><span class="mi">1</span><span class="p">],</span><span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s1">&#39;Error: elements in wrong format&#39;</span><span class="p">)</span>
+
+            <span class="c1"># find the boundary nodes: find faces that are referred to only once</span>
+            <span class="n">faces</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">r_</span><span class="p">[</span><span class="n">ele</span><span class="p">[:,</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span><span class="mi">1</span><span class="p">]],</span> 
+                          <span class="n">ele</span><span class="p">[:,</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span><span class="mi">2</span><span class="p">]],</span>
+                          <span class="n">ele</span><span class="p">[:,</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span><span class="mi">2</span><span class="p">]]]</span>
+            
+            <span class="n">faces</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sort</span><span class="p">(</span><span class="n">faces</span><span class="p">)</span>
+            <span class="n">unique_faces</span><span class="p">,</span> <span class="n">cnt</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">unique</span><span class="p">(</span><span class="n">faces</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">return_counts</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+            <span class="n">bnd_faces</span> <span class="o">=</span> <span class="n">unique_faces</span><span class="p">[</span><span class="n">cnt</span><span class="o">==</span><span class="mi">1</span><span class="p">,</span> <span class="p">:]</span>
+            <span class="n">bndvtx</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">unique</span><span class="p">(</span><span class="n">bnd_faces</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">bndvtx</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">nodes</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">bndvtx</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">int32</span><span class="p">(</span><span class="n">bndvtx</span><span class="o">-</span><span class="mi">1</span><span class="p">)]</span> <span class="o">=</span> <span class="mi">1</span>
+            <span class="c1"># area and support for each element</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">element_area</span> <span class="o">=</span> <span class="n">nirfasteruff_cpu</span><span class="o">.</span><span class="n">ele_area</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">nodes</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">elements</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">support</span> <span class="o">=</span> <span class="n">nirfasteruff_cpu</span><span class="o">.</span><span class="n">mesh_support</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">nodes</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">elements</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">element_area</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">dimension</span> <span class="o">=</span> <span class="mi">2</span>
+            <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">any</span><span class="p">(</span><span class="n">prop</span> <span class="o">!=</span> <span class="kc">None</span><span class="p">):</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">set_prop</span><span class="p">(</span><span class="n">prop</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Warning: optical properties not specified&#39;</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">src</span> <span class="o">!=</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">source</span> <span class="o">=</span> <span class="n">copy</span><span class="o">.</span><span class="n">deepcopy</span><span class="p">(</span><span class="n">src</span><span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">source</span><span class="o">.</span><span class="n">touch_sources</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Warning: no sources specified&#39;</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">det</span> <span class="o">!=</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">meas</span> <span class="o">=</span> <span class="n">copy</span><span class="o">.</span><span class="n">deepcopy</span><span class="p">(</span><span class="n">det</span><span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">meas</span><span class="o">.</span><span class="n">touch_detectors</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Warning: no detectors specified&#39;</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">all</span><span class="p">(</span><span class="n">link</span> <span class="o">!=</span> <span class="kc">None</span><span class="p">):</span>
+                <span class="k">if</span> <span class="n">link</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">==</span><span class="mi">3</span><span class="p">:</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">link</span> <span class="o">=</span> <span class="n">copy</span><span class="o">.</span><span class="n">deepcopy</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">ascontiguousarray</span><span class="p">(</span><span class="n">link</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">int32</span><span class="p">))</span>
+                <span class="k">elif</span> <span class="n">link</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">==</span><span class="mi">2</span><span class="p">:</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">link</span> <span class="o">=</span> <span class="n">copy</span><span class="o">.</span><span class="n">deepcopy</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">ascontiguousarray</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">c_</span><span class="p">[</span><span class="n">link</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ones</span><span class="p">(</span><span class="n">link</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">])],</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">int32</span><span class="p">))</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Warning: link in wrong format. Ignored.&#39;</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Warning: no link specified&#39;</span><span class="p">)</span></div>
+
         
 <div class="viewcode-block" id="base.stndmesh.from_volume">
 <a class="viewcode-back" href="../../_autosummary/nirfasteruff.nirfasteruff.base.html#nirfasteruff.nirfasteruff.base.stndmesh.from_volume">[docs]</a>
@@ -1935,6 +2185,59 @@
             <span class="n">ele</span><span class="p">,</span> <span class="n">nodes</span> <span class="o">=</span> <span class="n">meshing</span><span class="o">.</span><span class="n">RunCGALMeshGenerator</span><span class="p">(</span><span class="n">vol</span><span class="p">,</span> <span class="n">param</span><span class="p">)</span>
             <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Converting to NIRFAST format&#39;</span><span class="p">,</span> <span class="n">flush</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">from_solid</span><span class="p">(</span><span class="n">ele</span><span class="p">,</span> <span class="n">nodes</span><span class="p">,</span> <span class="n">prop</span><span class="p">,</span> <span class="n">src</span><span class="p">,</span> <span class="n">det</span><span class="p">,</span> <span class="n">link</span><span class="p">)</span></div>
+
+            
+<div class="viewcode-block" id="base.stndmesh.from_image">
+<a class="viewcode-back" href="../../_autosummary/nirfasteruff.nirfasteruff.base.html#nirfasteruff.nirfasteruff.base.stndmesh.from_image">[docs]</a>
+        <span class="k">def</span> <span class="nf">from_image</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">img</span><span class="p">,</span> <span class="n">param</span> <span class="o">=</span> <span class="n">utils</span><span class="o">.</span><span class="n">MeshingParams2D</span><span class="p">(),</span> <span class="n">prop</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">src</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">det</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">link</span> <span class="o">=</span> <span class="kc">None</span><span class="p">):</span>
+<span class="w">            </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">            Construct mesh from a segmented 2D image using JR Shewchuk&#39;s Triangle. Calls stndmesh.from_triangle after meshing step.</span>
+
+<span class="sd">            Parameters</span>
+<span class="sd">            ----------</span>
+<span class="sd">            vol : uint8 NumPy array</span>
+<span class="sd">                2D segmented image to be meshed. 0 is considered as outside. Regions labeled using unique integers.</span>
+<span class="sd">            param : nirfasteruff.utils.MeshingParams2D, optional</span>
+<span class="sd">                parameters used in Triangle. If not specified, uses the default parameters defined in nirfasteruff.utils.MeshingParams2D().</span>
+<span class="sd">                </span>
+<span class="sd">                Please modify field mm_per_pixel if your image doesn&#39;t have [1,1,1] resolution</span>
+<span class="sd">                </span>
+<span class="sd">                See :func:`~nirfasteruff.utils.MeshingParams2D()` for details.</span>
+<span class="sd">            prop : double NumPy array, optional</span>
+<span class="sd">                If not `None`, calls `stndmesh.set_prop()` and sets the optical properties in the mesh. The default is None.</span>
+<span class="sd">                </span>
+<span class="sd">                See :func:`~nirfasteruff.base.stndmesh.set_prop()` for details. </span>
+<span class="sd">            src : nirfasteruff.base.optode, optional</span>
+<span class="sd">                If not `None`, sets the sources and moves them to the appropriate locations. The default is None.</span>
+<span class="sd">                </span>
+<span class="sd">                See :func:`~nirfasteruff.base.optode.touch_sources()` for details.</span>
+<span class="sd">            det : nirfasteruff.base.optode, optional</span>
+<span class="sd">                If not `None`, sets the detectors and moves them to the appropriate locations. The default is None.</span>
+<span class="sd">                </span>
+<span class="sd">                See :func:`~nirfasteruff.base.optode.touch_detectors()` for details.</span>
+<span class="sd">            link : int32 NumPy array, optional</span>
+<span class="sd">                If not `None`, sets the channel information. Uses one-based indexing. The default is None.</span>
+<span class="sd">                </span>
+<span class="sd">                Each row represents a channel, in the form of `[src, det, active]`, where `active` is 0 or 1</span>
+<span class="sd">                </span>
+<span class="sd">                If `link` contains only two columns, all channels are considered active.</span>
+
+<span class="sd">            Returns</span>
+<span class="sd">            -------</span>
+<span class="sd">            None.</span>
+<span class="sd">            </span>
+<span class="sd">            References</span>
+<span class="sd">            -----------</span>
+<span class="sd">            https://www.cs.cmu.edu/~quake/triangle.html</span>
+
+<span class="sd">            &quot;&quot;&quot;</span>
+            
+            <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">img</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span> <span class="o">!=</span> <span class="mi">2</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="s1">&#39;Error: img should be a 2D matrix in unit8&#39;</span><span class="p">)</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Running Triangle&#39;</span><span class="p">,</span> <span class="n">flush</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+            <span class="n">ele</span><span class="p">,</span> <span class="n">nodes</span> <span class="o">=</span> <span class="n">meshing</span><span class="o">.</span><span class="n">img2mesh</span><span class="p">(</span><span class="n">img</span><span class="p">,</span> <span class="n">param</span><span class="p">)</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Converting to NIRFAST format&#39;</span><span class="p">,</span> <span class="n">flush</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">from_triangle</span><span class="p">(</span><span class="n">ele</span><span class="p">,</span> <span class="n">nodes</span><span class="p">,</span> <span class="n">prop</span><span class="p">,</span> <span class="n">src</span><span class="p">,</span> <span class="n">det</span><span class="p">,</span> <span class="n">link</span><span class="p">)</span></div>
 
         
 <div class="viewcode-block" id="base.stndmesh.set_prop">
@@ -2282,7 +2585,7 @@
                     <span class="n">rel_idx</span> <span class="o">=</span> <span class="p">(</span><span class="n">tet_vtx</span> <span class="o">-</span> <span class="n">start</span><span class="p">)</span> <span class="o">/</span> <span class="bp">self</span><span class="o">.</span><span class="n">vol</span><span class="o">.</span><span class="n">res</span>
                     <span class="n">raw_idx</span><span class="p">[</span><span class="n">i</span><span class="p">,:]</span> <span class="o">=</span> <span class="n">rel_idx</span><span class="p">[:,</span><span class="mi">2</span><span class="p">]</span><span class="o">*</span><span class="nb">len</span><span class="p">(</span><span class="n">xgrid</span><span class="p">)</span><span class="o">*</span><span class="nb">len</span><span class="p">(</span><span class="n">ygrid</span><span class="p">)</span> <span class="o">+</span> <span class="n">rel_idx</span><span class="p">[:,</span><span class="mi">0</span><span class="p">]</span><span class="o">*</span><span class="nb">len</span><span class="p">(</span><span class="n">ygrid</span><span class="p">)</span> <span class="o">+</span> <span class="n">rel_idx</span><span class="p">[:,</span><span class="mi">1</span><span class="p">]</span> <span class="c1"># zero-based</span>
                 
-                <span class="n">outvec</span> <span class="o">=</span> <span class="p">(</span><span class="n">loweridx</span><span class="p">[:,</span><span class="mi">0</span><span class="p">]</span><span class="o">&lt;</span><span class="mi">0</span><span class="p">)</span> <span class="o">|</span> <span class="p">(</span><span class="n">loweridx</span><span class="p">[:,</span><span class="mi">1</span><span class="p">]</span><span class="o">&lt;</span><span class="mi">0</span><span class="p">)</span> <span class="o">|</span> <span class="p">(</span><span class="n">loweridx</span><span class="p">[:,</span><span class="mi">2</span><span class="p">]</span><span class="o">&lt;</span><span class="mi">0</span><span class="p">)</span>
+                <span class="n">outvec</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">nodes</span><span class="o">&lt;</span><span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">xgrid</span><span class="o">.</span><span class="n">min</span><span class="p">(),</span> <span class="n">ygrid</span><span class="o">.</span><span class="n">min</span><span class="p">(),</span> <span class="n">zgrid</span><span class="o">.</span><span class="n">min</span><span class="p">()]),</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span> <span class="o">|</span> <span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">nodes</span><span class="o">&gt;</span><span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">xgrid</span><span class="o">.</span><span class="n">max</span><span class="p">(),</span> <span class="n">ygrid</span><span class="o">.</span><span class="n">max</span><span class="p">(),</span> <span class="n">zgrid</span><span class="o">.</span><span class="n">max</span><span class="p">()]),</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
                 <span class="n">inside</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">flatnonzero</span><span class="p">(</span><span class="o">~</span><span class="n">outvec</span><span class="p">)</span>
                 <span class="c1"># if any of the queried nodes was not asigned a value in the previous step,</span>
                 <span class="c1"># treat it as an outside node and extrapolate. Otherwise the boundary elements will have smaller values than they should</span>
@@ -2309,7 +2612,7 @@
                     <span class="n">rel_idx</span> <span class="o">=</span> <span class="p">(</span><span class="n">tet_vtx</span> <span class="o">-</span> <span class="n">start</span><span class="p">)</span> <span class="o">/</span> <span class="bp">self</span><span class="o">.</span><span class="n">vol</span><span class="o">.</span><span class="n">res</span>
                     <span class="n">raw_idx</span><span class="p">[</span><span class="n">i</span><span class="p">,:]</span> <span class="o">=</span> <span class="n">rel_idx</span><span class="p">[:,</span><span class="mi">0</span><span class="p">]</span><span class="o">*</span><span class="nb">len</span><span class="p">(</span><span class="n">ygrid</span><span class="p">)</span> <span class="o">+</span> <span class="n">rel_idx</span><span class="p">[:,</span><span class="mi">1</span><span class="p">]</span> <span class="c1"># zero-based</span>
                 
-                <span class="n">outvec</span> <span class="o">=</span> <span class="p">(</span><span class="n">loweridx</span><span class="p">[:,</span><span class="mi">0</span><span class="p">]</span><span class="o">&lt;</span><span class="mi">0</span><span class="p">)</span> <span class="o">|</span> <span class="p">(</span><span class="n">loweridx</span><span class="p">[:,</span><span class="mi">1</span><span class="p">]</span><span class="o">&lt;</span><span class="mi">0</span><span class="p">)</span>
+                <span class="n">outvec</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">nodes</span><span class="o">&lt;</span><span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">xgrid</span><span class="o">.</span><span class="n">min</span><span class="p">(),</span> <span class="n">ygrid</span><span class="o">.</span><span class="n">min</span><span class="p">()]),</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span> <span class="o">|</span> <span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">nodes</span><span class="o">&gt;</span><span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">xgrid</span><span class="o">.</span><span class="n">max</span><span class="p">(),</span> <span class="n">ygrid</span><span class="o">.</span><span class="n">max</span><span class="p">()]),</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
                 <span class="n">inside</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">flatnonzero</span><span class="p">(</span><span class="o">~</span><span class="n">outvec</span><span class="p">)</span>
                 <span class="c1"># if any of the queried nodes was not asigned a value in the previous step,</span>
                 <span class="c1"># treat it as an outside node and extrapolate. Otherwise the boundary elements will have smaller values than they should</span>
@@ -2812,7 +3115,7 @@
   <hr/>
 
   <div role="contentinfo">
-    <p>&#169; Copyright 2024, Jiaming Cao, MILAB@UoB.</p>
+    <p>&#169; Copyright 2025, Jiaming Cao (University of Macau), MILAB@UoB.</p>
   </div>
 
   Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a

@@ -6,14 +6,14 @@
   <meta charset="utf-8" /><meta name="generator" content="Docutils 0.18.1: http://docutils.sourceforge.net/" />
 
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>nirfasteruff.nirfasteruff.meshing &mdash; NIRFASTerUFF 1.0.0 documentation</title>
+  <title>nirfasteruff.nirfasteruff.meshing &mdash; NIRFASTerUFF 1.2.0 documentation</title>
       <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=92fd9be5" />
       <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=e59714d7" />
 
   
       <script src="../_static/jquery.js?v=5d32c60e"></script>
       <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
-      <script src="../_static/documentation_options.js?v=8d563738"></script>
+      <script src="../_static/documentation_options.js?v=6efca38a"></script>
       <script src="../_static/doctools.js?v=9a2dae69"></script>
       <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="../_static/js/theme.js"></script>
@@ -106,6 +106,9 @@
 <tr class="row-even"><td><p><a class="reference internal" href="#nirfasteruff.nirfasteruff.meshing.__init__" title="nirfasteruff.nirfasteruff.meshing.__init__"><code class="xref py py-obj docutils literal notranslate"><span class="pre">__init__</span></code></a>()</p></td>
 <td><p></p></td>
 </tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#nirfasteruff.nirfasteruff.meshing.img2mesh" title="nirfasteruff.nirfasteruff.meshing.img2mesh"><code class="xref py py-obj docutils literal notranslate"><span class="pre">img2mesh</span></code></a>([opt])</p></td>
+<td><p>Creates 2D mesh from a labeled image.</p></td>
+</tr>
 </tbody>
 </table>
 <dl class="py method">
@@ -135,6 +138,35 @@
 <p><a class="reference external" href="https://doc.cgal.org/latest/Mesh_3/index.html#Chapter_3D_Mesh_Generation">https://doc.cgal.org/latest/Mesh_3/index.html#Chapter_3D_Mesh_Generation</a></p>
 </dd></dl>
 
+<dl class="py method">
+<dt class="sig sig-object py" id="nirfasteruff.nirfasteruff.meshing.img2mesh">
+<span class="sig-name descname"><span class="pre">img2mesh</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">opt</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">utils.MeshingParams2D()</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/nirfasteruff/nirfasteruff.html#meshing.img2mesh"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#nirfasteruff.nirfasteruff.meshing.img2mesh" title="Link to this definition"></a></dt>
+<dd><p>Creates 2D mesh from a labeled image. Using Jonathan Shewchuk’s Triangle, with arguments -pPqQaA.</p>
+<p>The different regions are labeled using continuously ascending integers starting from 1. 0 pixels are background.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>img</strong> (<em>integer Numpy array</em>) – 2D image defining the space to mesh. Regions defined by different integers. 0 is background.</p></li>
+<li><p><strong>opt</strong> (<em>nirfasterff.utils.MeshingParams</em><em>, </em><em>optional</em>) – <p>meshing parameters used. Default values will be used if not specified.</p>
+<p>See <code class="xref py py-func docutils literal notranslate"><span class="pre">nirfasterff.utils.MeshingParams2D()</span></code> for details</p>
+</p></li>
+</ul>
+</dd>
+<dt class="field-even">Raises<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>ValueError</strong> – if the specified max areas mismatch with number of levels, or if the labels are not continuous.</p>
+</dd>
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p><ul class="simple">
+<li><p><strong>mesh_e</strong> (<em>int NumPy array</em>) – element list calculated by the mesher, one-based. Last column indicates the region each element belongs to</p></li>
+<li><p><strong>mesh_n</strong> (<em>double NumPy array</em>) – element list calculated by the mesher, in mm.</p></li>
+</ul>
+</p>
+</dd>
+</dl>
+<p class="rubric">References</p>
+<p><a class="reference external" href="https://www.cs.cmu.edu/~quake/triangle.html">https://www.cs.cmu.edu/~quake/triangle.html</a></p>
+</dd></dl>
+
 </dd></dl>
 
 </section>
@@ -150,7 +182,7 @@
   <hr/>
 
   <div role="contentinfo">
-    <p>&#169; Copyright 2024, Jiaming Cao, MILAB@UoB.</p>
+    <p>&#169; Copyright 2025, Jiaming Cao (University of Macau), MILAB@UoB.</p>
   </div>
 
   Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a

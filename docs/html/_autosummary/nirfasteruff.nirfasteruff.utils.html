@@ -6,14 +6,14 @@
   <meta charset="utf-8" /><meta name="generator" content="Docutils 0.18.1: http://docutils.sourceforge.net/" />
 
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>nirfasteruff.nirfasteruff.utils &mdash; NIRFASTerUFF 1.0.0 documentation</title>
+  <title>nirfasteruff.nirfasteruff.utils &mdash; NIRFASTerUFF 1.2.0 documentation</title>
       <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=92fd9be5" />
       <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=e59714d7" />
 
   
       <script src="../_static/jquery.js?v=5d32c60e"></script>
       <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
-      <script src="../_static/documentation_options.js?v=8d563738"></script>
+      <script src="../_static/documentation_options.js?v=6efca38a"></script>
       <script src="../_static/doctools.js?v=9a2dae69"></script>
       <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="../_static/js/theme.js"></script>
@@ -317,6 +317,55 @@ Dummy class used so the function hierarchy can be compatible with the full versi
 </dd></dl>
 
 <dl class="py class">
+<dt class="sig sig-object py" id="nirfasteruff.nirfasteruff.utils.MeshingParams2D">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">MeshingParams2D</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">mm_per_pixel</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">max_area</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">2.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">offset</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/nirfasteruff/nirfasteruff.html#utils.MeshingParams2D"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#nirfasteruff.nirfasteruff.utils.MeshingParams2D" title="Link to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<p>Parameters to be used by the Triangle mesher. Note: they should all be double</p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="nirfasteruff.nirfasteruff.utils.MeshingParams2D.mm_per_pixel">
+<span class="sig-name descname"><span class="pre">mm_per_pixel</span></span><a class="headerlink" href="#nirfasteruff.nirfasteruff.utils.MeshingParams2D.mm_per_pixel" title="Link to this definition"></a></dt>
+<dd><p>pixel size in both directions, in millimeter. Default: 1.0</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>double</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="nirfasteruff.nirfasteruff.utils.MeshingParams2D.max_area">
+<span class="sig-name descname"><span class="pre">max_area</span></span><a class="headerlink" href="#nirfasteruff.nirfasteruff.utils.MeshingParams2D.max_area" title="Link to this definition"></a></dt>
+<dd><p>maximum area per triangle, before scaling with mm_per_pixel. If scalar, same value is applied to all triangles</p>
+<p>If Numpy array, it must follow this format:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="p">[</span><span class="mi">1</span> <span class="n">area1</span><span class="p">]</span>
+<span class="p">[</span><span class="mi">2</span> <span class="n">area2</span><span class="p">]</span>
+<span class="o">...</span>
+</pre></div>
+</div>
+<p>where max area for each labeled region is specified individually. ALL regions must be given a value</p>
+<p>Default: 2.0</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>double scalar or Numpy array</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="nirfasteruff.nirfasteruff.utils.MeshingParams2D.offset">
+<span class="sig-name descname"><span class="pre">offset</span></span><a class="headerlink" href="#nirfasteruff.nirfasteruff.utils.MeshingParams2D.offset" title="Link to this definition"></a></dt>
+<dd><p>offset to be added (in mm) at the very end of the meshing (that is, after scaling). Size must be 2</p>
+<p>Default: None, i.e. no offset to be added</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Numpy array or list</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
 <dt class="sig sig-object py" id="nirfasteruff.nirfasteruff.utils.SolverOptions">
 <em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">SolverOptions</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">max_iter</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1000</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">AbsoluteTolerance</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1e-12</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">RelativeTolerance</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1e-12</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">divergence</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1e8</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">GPU</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">-1</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/nirfasteruff/nirfasteruff.html#utils.SolverOptions"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#nirfasteruff.nirfasteruff.utils.SolverOptions" title="Link to this definition"></a></dt>
 <dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
@@ -534,7 +583,7 @@ Otherwise use min(physical_core, 8), i.e. no more than 8</p>
   <hr/>
 
   <div role="contentinfo">
-    <p>&#169; Copyright 2024, Jiaming Cao, MILAB@UoB.</p>
+    <p>&#169; Copyright 2025, Jiaming Cao (University of Macau), MILAB@UoB.</p>
   </div>
 
   Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a

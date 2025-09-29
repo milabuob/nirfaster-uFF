@@ -6,14 +6,14 @@
   <meta charset="utf-8" /><meta name="generator" content="Docutils 0.18.1: http://docutils.sourceforge.net/" />
 
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>nirfasteruff.nirfasteruff.base &mdash; NIRFASTerUFF 1.0.0 documentation</title>
+  <title>nirfasteruff.nirfasteruff.base &mdash; NIRFASTerUFF 1.2.0 documentation</title>
       <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=92fd9be5" />
       <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=e59714d7" />
 
   
       <script src="../_static/jquery.js?v=5d32c60e"></script>
       <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
-      <script src="../_static/documentation_options.js?v=8d563738"></script>
+      <script src="../_static/documentation_options.js?v=6efca38a"></script>
       <script src="../_static/doctools.js?v=9a2dae69"></script>
       <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
       <script async="async" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
@@ -745,6 +745,41 @@ Dummy class used so the function hierarchy can be compatible with the full versi
 </dd></dl>
 
 <dl class="py method">
+<dt class="sig sig-object py" id="nirfasteruff.nirfasteruff.base.stndmesh.from_image">
+<span class="sig-name descname"><span class="pre">from_image</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">img</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">param</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">utils.MeshingParams2D()</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">prop</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">src</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">det</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">link</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/nirfasteruff/nirfasteruff.html#base.stndmesh.from_image"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#nirfasteruff.nirfasteruff.base.stndmesh.from_image" title="Link to this definition"></a></dt>
+<dd><p>Construct mesh from a segmented 2D image using JR Shewchuk’s Triangle. Calls stndmesh.from_triangle after meshing step.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>vol</strong> (<em>uint8 NumPy array</em>) – 2D segmented image to be meshed. 0 is considered as outside. Regions labeled using unique integers.</p></li>
+<li><p><strong>param</strong> (<a class="reference internal" href="nirfasteruff.nirfasteruff.utils.html#nirfasteruff.nirfasteruff.utils.MeshingParams2D" title="nirfasteruff.nirfasteruff.utils.MeshingParams2D"><em>nirfasteruff.utils.MeshingParams2D</em></a><em>, </em><em>optional</em>) – <p>parameters used in Triangle. If not specified, uses the default parameters defined in nirfasteruff.utils.MeshingParams2D().</p>
+<p>Please modify field mm_per_pixel if your image doesn’t have [1,1,1] resolution</p>
+<p>See <code class="xref py py-func docutils literal notranslate"><span class="pre">MeshingParams2D()</span></code> for details.</p>
+</p></li>
+<li><p><strong>prop</strong> (<em>double NumPy array</em><em>, </em><em>optional</em>) – <p>If not <cite>None</cite>, calls <cite>stndmesh.set_prop()</cite> and sets the optical properties in the mesh. The default is None.</p>
+<p>See <code class="xref py py-func docutils literal notranslate"><span class="pre">set_prop()</span></code> for details.</p>
+</p></li>
+<li><p><strong>src</strong> (<a class="reference internal" href="#nirfasteruff.nirfasteruff.base.optode" title="nirfasteruff.nirfasteruff.base.optode"><em>nirfasteruff.base.optode</em></a><em>, </em><em>optional</em>) – <p>If not <cite>None</cite>, sets the sources and moves them to the appropriate locations. The default is None.</p>
+<p>See <code class="xref py py-func docutils literal notranslate"><span class="pre">touch_sources()</span></code> for details.</p>
+</p></li>
+<li><p><strong>det</strong> (<a class="reference internal" href="#nirfasteruff.nirfasteruff.base.optode" title="nirfasteruff.nirfasteruff.base.optode"><em>nirfasteruff.base.optode</em></a><em>, </em><em>optional</em>) – <p>If not <cite>None</cite>, sets the detectors and moves them to the appropriate locations. The default is None.</p>
+<p>See <code class="xref py py-func docutils literal notranslate"><span class="pre">touch_detectors()</span></code> for details.</p>
+</p></li>
+<li><p><strong>link</strong> (<em>int32 NumPy array</em><em>, </em><em>optional</em>) – <p>If not <cite>None</cite>, sets the channel information. Uses one-based indexing. The default is None.</p>
+<p>Each row represents a channel, in the form of <cite>[src, det, active]</cite>, where <cite>active</cite> is 0 or 1</p>
+<p>If <cite>link</cite> contains only two columns, all channels are considered active.</p>
+</p></li>
+</ul>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>None.</p>
+</dd>
+</dl>
+<p class="rubric">References</p>
+<p><a class="reference external" href="https://www.cs.cmu.edu/~quake/triangle.html">https://www.cs.cmu.edu/~quake/triangle.html</a></p>
+</dd></dl>
+
+<dl class="py method">
 <dt class="sig sig-object py" id="nirfasteruff.nirfasteruff.base.stndmesh.from_mat">
 <span class="sig-name descname"><span class="pre">from_mat</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">matfile</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">varname</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/nirfasteruff/nirfasteruff.html#base.stndmesh.from_mat"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#nirfasteruff.nirfasteruff.base.stndmesh.from_mat" title="Link to this definition"></a></dt>
 <dd><p>Read from Matlab .mat file that contains a NIRFASTer mesh struct. All fields copied as is without error checking.</p>
@@ -775,6 +810,39 @@ Dummy class used so the function hierarchy can be compatible with the full versi
 <p>If five columns, the last column will be used for region labeling.</p>
 </p></li>
 <li><p><strong>nodes</strong> (<em>double NumPy array</em>) – node locations in the mesh. Unit: mm. Size (NNodes,3).</p></li>
+<li><p><strong>prop</strong> (<em>double NumPy array</em><em>, </em><em>optional</em>) – <p>If not <cite>None</cite>, calls <cite>stndmesh.set_prop()</cite> and sets the optical properties in the mesh. The default is None.</p>
+<p>See <code class="xref py py-func docutils literal notranslate"><span class="pre">set_prop()</span></code> for details.</p>
+</p></li>
+<li><p><strong>src</strong> (<a class="reference internal" href="#nirfasteruff.nirfasteruff.base.optode" title="nirfasteruff.nirfasteruff.base.optode"><em>nirfasteruff.base.optode</em></a><em>, </em><em>optional</em>) – <p>If not <cite>None</cite>, sets the sources and moves them to the appropriate locations. The default is None.</p>
+<p>See <code class="xref py py-func docutils literal notranslate"><span class="pre">touch_sources()</span></code> for details.</p>
+</p></li>
+<li><p><strong>det</strong> (<a class="reference internal" href="#nirfasteruff.nirfasteruff.base.optode" title="nirfasteruff.nirfasteruff.base.optode"><em>nirfasteruff.base.optode</em></a><em>, </em><em>optional</em>) – <p>If not <cite>None</cite>, sets the detectors and moves them to the appropriate locations. The default is None.</p>
+<p>See <code class="xref py py-func docutils literal notranslate"><span class="pre">touch_detectors()</span></code> for details.</p>
+</p></li>
+<li><p><strong>link</strong> (<em>int32 NumPy array</em><em>, </em><em>optional</em>) – <p>If not <cite>None</cite>, sets the channel information. Uses one-based indexing. The default is None.</p>
+<p>Each row represents a channel, in the form of <cite>[src, det, active]</cite>, where <cite>active</cite> is 0 or 1</p>
+<p>If <cite>link</cite> contains only two columns, all channels are considered active.</p>
+</p></li>
+</ul>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>None.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="nirfasteruff.nirfasteruff.base.stndmesh.from_triangle">
+<span class="sig-name descname"><span class="pre">from_triangle</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">ele</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">nodes</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">prop</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">src</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">det</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">link</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/nirfasteruff/nirfasteruff.html#base.stndmesh.from_triangle"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#nirfasteruff.nirfasteruff.base.stndmesh.from_triangle" title="Link to this definition"></a></dt>
+<dd><p>Construct a NIRFASTer mesh from a 2D triangular mesh generated by a mesher.</p>
+<p>Can also set the optical properties and optodes if supplied</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>ele</strong> (<em>int/double NumPy array</em>) – <p>element list in one-based indexing. If three columns, all nodes will be labeled as region 1</p>
+<p>If four columns, the last column will be used for region labeling.</p>
+</p></li>
+<li><p><strong>nodes</strong> (<em>double NumPy array</em>) – node locations in the mesh. Unit: mm. Size (NNodes,2).</p></li>
 <li><p><strong>prop</strong> (<em>double NumPy array</em><em>, </em><em>optional</em>) – <p>If not <cite>None</cite>, calls <cite>stndmesh.set_prop()</cite> and sets the optical properties in the mesh. The default is None.</p>
 <p>See <code class="xref py py-func docutils literal notranslate"><span class="pre">set_prop()</span></code> for details.</p>
 </p></li>
@@ -930,7 +998,7 @@ Dummy class used so the function hierarchy can be compatible with the full versi
   <hr/>
 
   <div role="contentinfo">
-    <p>&#169; Copyright 2024, Jiaming Cao, MILAB@UoB.</p>
+    <p>&#169; Copyright 2025, Jiaming Cao (University of Macau), MILAB@UoB.</p>
   </div>
 
   Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a

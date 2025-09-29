@@ -1,4 +1,4 @@
-nirfasteruff.nirfasteruff.meshing
+﻿nirfasteruff.nirfasteruff.meshing
 =================================
 
 .. currentmodule:: nirfasteruff.nirfasteruff
@@ -18,6 +18,7 @@ nirfasteruff.nirfasteruff.meshing
    
       ~meshing.RunCGALMeshGenerator
       ~meshing.__init__
+      ~meshing.img2mesh
    
    
 

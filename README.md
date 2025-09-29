@@ -2,13 +2,23 @@
 
 Public repository containing the micro (fast and furious) version of NIRFASTer
 
-- Version: 1.0.0
-- Authors: Jiaming Cao, MILab@UoB
+- Version: 1.2.0
+- Authors: Jiaming Cao (University of Macau), MILab@UoB
 - License: BSD
 
 This is a compact (aka micro) version of the NIRFASTer with Python interface, providing the most essential functionalities (that is, forward modeling on standard mesh) in NIRFASTer. This version is created aiming to be easily integratable with other toolkits, but can also be used on its own.
 
-The toolbox can be run on Linux, Mac, and Windows. To use GPU acceleration, you will need to have a Nvidia card with compute capability higer than `sm_52`, i.e. the GTX9xx series.
+The toolbox can be run on Linux, Mac, and Windows. To use GPU acceleration, you will need to have a Nvidia card with compute capability higer than `sm_50`, i.e. the GTX9xx series.
+
+## Dependencies
+
+Packages required:
+
+- NumPy
+- Scipy
+- psutil
+- matplotlib
+- scikit-image (*new from version 1.2*)
 
 ## How to Install
 
@@ -20,7 +30,7 @@ Regardless of your setup, you will need to download the CPU library (cpu-*os*-py
 
 **Special notes to Mac users**
 
-Mac may throw a warning that the file is damaged and need to be moved to Trash. You can bypass this by using command
+*Support for Python versions other than 3.10-3.12 are not available at the moment. We are not dropping support for Mac, but will be a little slow in the near future.* Mac may throw a warning that the file is damaged and need to be moved to Trash. You can bypass this by using command
 
 ```bash
 xattr -c <your_library>.so
@@ -45,13 +55,24 @@ The head model is adapted from the examples in the NeuroDOT toolbox: https://git
 ## Available key functionalities
 
 - I/O of NIRFAST(er) meshes. This is directly compatible with the Matlab version
-- Mesh creation from segmented volumetric data
+- Mesh creation from segmented volumetric data, *and segemented 2D image (new from 1.2.0)*
 - Conversion from solid mesh to NIRFASTer mesh
 - Fluence calculation (CW/FD)
 
 ## Changelog
 
+1.2.0
+
+- Support for newer GPUs (50xx series)
+
+- Support for Python 3.8 and 3.13 (Windows and Linux only)
+
+- Minor bug fix in gen_intmat
+
+- 2D meshing added
+
 1.0.0
+
 - Added support for Python 3.12
 - CGAL mesher separated from the CPU library as a standalone application
 - Fixed a bug in gen_intmat, which leads to incorrect data.tomesh() result when xgrid and ygrid have different resolutions
@@ -66,8 +87,7 @@ The head model is adapted from the examples in the NeuroDOT toolbox: https://git
 
 The reason for the Mac issue: Mac automatically attaches a quarantine attribute to downloaded files, and the marked files will be checked by the Gatekeeper. Somehow (file I/O, possibly), Apple's gatekeeper is not very happy about my code and refuses to run. This checking can be bypassed by manually removing the quarantine attribute. You can view this by `ls -l@`, and you should see the `com.apple.quarantine` thing.
 
-Speed-critically functions are packed in precompiled libraries, nirfasteruff_cpu and nirfasteruff_cuda. The Linux and Mac versions are statically linked so there is only one file for each library, and no extra dependen is required (need testing). Only limited static linking could be used on Windows (e.g. the CUDA libraries), and consequently the necessary dlls are also included.
-
+Speed-critically functions are packed in precompiled libraries, nirfasteruff_cpu and nirfasteruff_cuda. The Linux and Mac versions are statically linked so there is only one file for each library, and no extra dependen is required (need testing). Only limited static linking could be used on Windows (e.g. the CUDA libraries), and consequently the necessary dlls are also included. In order to support older GPUs (sm<7.5), CUDA 12.9 was used to compile the GPU libraries, and this will remain the CUDA version we use for some time unless there is a compelling reason to upgrade. 
 
 #### Potential pitfalls:
 
